@@ -1,0 +1,216 @@
+% THIS STYLE FILE CONTAINS SOME COMMON ABBREVIATIONS
+
+\RequirePackage{xspace} % Used to get the \xspace command for spaces after abbreviations.
+\newcommand\textabbr[1]{\mbox{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                      STANDARD ABBREVIATIONS                       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\eg}{e.g.\@\xspace}
+\newcommand{\ie}{i.e.\@\xspace}
+\newcommand{\etc}{etc}               % Used at the end of a sentence
+\newcommand{\etcin}{etc.\@\xspace}   % Used in scentence
+\newcommand{\wrt}{w.r.t.\@\xspace}
+\newcommand{\sbto}{s.t.\@\xspace}
+\newcommand{\cf}{cf.\@\xspace}
+\newcommand{\vs}{vs.\@\xspace}
+\newcommand{\NB}{N.B.\@\xspace}
+\newcommand{\subto}{\text{s.t.} \:}
+
+\newcommand{\io}{i.o.\@\xspace}
+\newcommand{\asintext}{almost surely\@\xspace}
+\newcommand{\allmosteverywhere}{a.e.\@\xspace}
+\newcommand{\asend}{a.s}
+\newcommand{\wpone}{w.p.1.\@\xspace}
+\newcommand{\aeend}{a.e}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                COMMON TOPIC SPECIFIC ABBREVIATIONS                %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Models
+\newcommand\ssm{SSM\@\xspace}      % State-space model
+\newcommand\lgss{LGSS\@\xspace}    % Linear Gaussian state-space
+\newcommand\pgm{PGM\@\xspace}    % Probabilistic graphical model
+\newcommand\mrf{MRF\@\xspace}    % Markov Random field
+% Methods
+\newcommand\exm{EM\@\xspace}      % Expectation maximization
+% Monte Carlo methods
+\newcommand\is{IS\@\xspace}      % Importance Sampling
+\newcommand\sis{SIS\@\xspace}      % Sequential Importance Sampling
+\newcommand\stpf{ST-PF\@\xspace}   % Space-Time Particle Filter
+\newcommand\smc{SMC\@\xspace}      % Sequential Monte Carlo
+\newcommand\csmc{CSMC\@\xspace}      % Conditional Sequential Monte Carlo
+\newcommand\nsmc{NSMC\@\xspace}      % Nested Sequential Monte Carlo
+\newcommand\mcmc{MCMC\@\xspace}    % Markov chain Monte Carlo
+\newcommand\pmcmc{PMCMC\@\xspace}  % Particle MCMC
+\newcommand\ipmc{iPMCMC\@\xspace}    % interacting Particle Markov Chain Monte Carlo
+\newcommand\ipmcmc{iPMCMC\@\xspace}    % interacting Particle Markov Chain Monte Carlo
+\newcommand\pmmh{PMMH\@\xspace}    % Particle Marginal Metropolis-Hastings
+\newcommand\pg{PG\@\xspace}        % Particle Gibbs
+\newcommand\apf{APF\@\xspace}        % Auxiliary particle filter
+\newcommand\ess{ESS\@\xspace}	   % Effective Samples Size
+\newcommand\ers{ERS\@\xspace}	   % Effective Resample Size
+
+\newcommand\hone{H1\@\xspace}	
+\newcommand\htwo{H2\@\xspace}	
+
+\DeclareRobustCommand*\matlab{\mbox{Matlab}\xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			%                iPMCMC              %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand\nw{\bar w} % Normalised weights
+\newcommand\nz{\zeta} % Normalised conditional sampling weights
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			%                BOPP               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\lsi}[1]{\lstinline$#1$}
+
+\newcommand{\sample}{\lstinline$sample$\xspace}
+\newcommand{\observe}{\lstinline$observe$\xspace}
+\newcommand{\observes}{\lstinline$observe<-$\xspace}
+\newcommand{\predict}{\lstinline$predict$\xspace}
+\newcommand{\simulatec}{\lstinline$simulate$\xspace}
+\newcommand{\abcl}{\lstinline$abc-likelihood$\xspace}
+\newcommand{\boppfactor}{\lstinline$factor$\xspace}
+
+\newcommand{\samplecps}{\lstinline$->sample$\xspace}
+\newcommand{\observecps}{\lstinline$->observe$\xspace}
+
+\newcommand{\checkpoint}{\lstinline$checkpoint$\xspace}
+\newcommand{\anginfer}{\lstinline$infer$\xspace}
+
+\newcommand{\defdist}{\lstinline$defdist$\xspace}
+\newcommand{\defquery}{\lstinline$defquery$\xspace}
+\newcommand{\query}{\lstinline$query$\xspace}
+\newcommand{\defopt}{\lstinline$defopt$\xspace}
+\newcommand{\doquery}{\lstinline$doquery$\xspace}
+\newcommand{\doopt}{\lstinline$doopt$\xspace}
+\newcommand{\defn}{\lstinline$defn$\xspace}
+\newcommand{\defm}{\lstinline$defm$\xspace}
+\newcommand{\normal}{\lstinline$normal$\xspace}
+\newcommand{\studentt}{\lstinline$student-t$\xspace}
+\newcommand{\betaa}{\lstinline$beta$\xspace}
+\newcommand{\gammaa}{\lstinline$gamma$\xspace}
+
+\newcommand{\cllet}{\lstinline$let$\xspace}
+\newcommand{\map}{\lstinline$map$\xspace}
+\newcommand{\reduce}{\lstinline$reduce$\xspace}
+
+\newcommand{\mem}{\lstinline$mem$\xspace}
+\newcommand{\store}{\lstinline$store$\xspace}
+\newcommand{\retrieve}{\lstinline$retrieve$\xspace}
+\newcommand{\conditional}{\lstinline$conditional$\xspace}
+\newcommand{\qmarg}{\lstinline$q-marg$\xspace}
+\newcommand{\qprior}{\lstinline$q-prior$\xspace}
+\newcommand{\qacq}{\lstinline$q-acq$\xspace}
+
+\newcommand{\clj}[1]{{\small \lsi{#1}}}
+\newcommand{\smalltt}[1]{{\small \texttt{#1}}}
+
+\newcommand{\dollar}{\mbox{\textdollar}}
+\newcommand{\angstate}{\ensuremath{\mathcal{S}}\xspace}
+
+\newcolumntype{A}{>{\centering\arraybackslash}m{1cm}}
+\newcolumntype{B}{>{\centering\arraybackslash}m{1.5cm}}
+\newcolumntype{D}{>{\centering\arraybackslash}m{2cm}}
+
+%\renewcommand*\Call[2]{\textproc{#1}(#2)}
+%
+%\algnewcommand{\IIf}[1]{\unskip \algorithmicif\ #1\ \algorithmicthen}
+%\algnewcommand{\ElseIIf}{\unskip\ \algorithmicelse}
+%\algnewcommand{\EndIIf}{\unskip\ \algorithmicend\ \algorithmicif}
+
+\newcommand{\xnx}{x_{1:n_x}}
+\newcommand{\hxnx}{\hat{x}_{1:n_x}}
+
+\newcommand{\mX}{\mathcal{X}}
+\newcommand{\mP}{\mathcal{P}}
+\newcommand{\mD}{\mathcal{D}}
+\newcommand{\mT}{\mathcal{T}}
+\newcommand{\mB}{\mathcal{B}}
+
+\newcommand{\nx}{_{\mathrm{next}}}
+\newcommand{\real}{\mathbb{R}}
+\newcommand{\xpos}{\tilde{\mathbf{x}}}
+\newcommand{\xb}{\mathbf{x}}
+\newcommand{\yb}{\mathbf{y}}
+\newcommand{\zb}{\mathbf{z}}
+\newcommand{\hb}{\mathbf{h}}
+\newcommand{\hx}{h\left(\xb,\zb\right)}
+
+\newcommand{\hu}{\hat{u}}
+\newcommand{\hz}{\hat{Z}}
+\newcommand{\hw}{\hat{w}}
+\newcommand{\hth}{\hat{\theta}}
+\newcommand{\ho}{\hat{\Omega}}
+
+\newcommand{\tilz}{\tilde{Z}}
+\newcommand{\tilw}{\tilde{w}}
+\newcommand{\tilth}{\tilde{\theta}}
+\newcommand{\tilo}{\tilde{\Omega}}
+
+\newcommand{\jsm}{j^*_m}
+
+\newcommand{\bc}{\left(\cdot\right)}
+\newcommand{\bcc}{\left(\cdot\right)}
+\newcommand{\mM}{\mathcal{M}}
+\newcommand{\tx}{\texttt{x}}
+\newcommand{\ty}{\texttt{y}}
+\newcommand{\tz}{\texttt{z}}
+\newcommand{\tb}{\texttt{b}}
+\newcommand{\ft}{f\left(\theta\right)}
+\newcommand{\tth}{\tilde{\theta}}
+\newcommand{\mut}{\mu_m\left(\theta ; \alpha\right)}
+\newcommand{\kt}{k_{m}\left(\theta,\theta'\right)}
+\newcommand{\sut}{\sigma_m\left(\theta ; \alpha\right)}
+\newcommand{\gut}{\gamma_{m}\left(\theta\right)}
+
+\newcommand{\RN}[1]{%
+	\textup{\uppercase\expandafter{\romannumeral#1}}%
+}
+\renewcommand{\v}[1]{\ensuremath{\boldsymbol{#1}}}
+
+\DeclareMathOperator{\Normal}{Normal}
+\DeclareMathOperator{\Dirichlet}{Dirichlet}
+\DeclareMathOperator{\Gammaa}{Gamma}
+\DeclareMathOperator{\simulate}{simulate}
+\DeclareMathOperator{\dist}{dist}
+\DeclareMathOperator{\std}{std}
+
+\newcommand{\ptil}{\tilde{p}}
+\newcommand{\ind}{\mathbb{I}}
+
+\newcommand{\mc}{Monte Carlo\@\xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                Nested MC               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+%\newcommand{\E}{\mathbb{E}}
+\DeclareMathOperator{\MSE}{MSE}
+\newcommand{\asto}{\overset{a.s.}{\to}}
+\newcommand{\iid}{\overset{i.i.d.}{\sim}}
+\newcommand{\Ltwo}{\overset{L^2}{\sim}}
+\newcommand{\Lp}{\overset{L^p}{\to}}
+\newcommand{\meanto}{\overset{L^1}{\to}}
+
+\newcommand{\hg}{\hat{\gamma}}
+\newcommand{\gy}{\gamma(y)}
+\newcommand{\gyn}{\gamma(y_n)}
+
+\newcommand{\var}{\mathrm{Var}}
+\newcommand{\N}{\mathbb{N}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                Prob Prog               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\newcommand{\Bad} {BED\@\xspace}

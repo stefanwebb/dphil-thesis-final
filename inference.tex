@@ -1,0 +1,331 @@
+\section{Bayesian inference}
+We have discussed how latent variable generative models are of particular interest for probabilistic machine learning in that they enable the solution of many tasks beyond associating inputs and outputs. The inclusion of latent variables, however, necessitates inferential procedures for recovering their likely value. In this section, we describe two main families of approximate inference algorithms, and their relationship to our work.
+
+Recall that a latent variable generative model supposes latent (unobserved) random variables, $\mathbf{z}$, that give rise to observed random variables, $\mathbf{x}$, through a generative process, \fixedmodel. The \emph{prior}, $p(\mathbf{z})$, reflects our beliefs about the uncertainty in $\mathbf{z}$ before having made any observations. After having observed $\mathbf{x}$, our beliefs can be updated to reflect this knowledge using Bayes' rule, 
+\begin{align*}
+	p(\mathbf{z}\mid\mathbf{x}) &= \frac{p(\mathbf{z})p(\mathbf{x}\mid\mathbf{z})}{p(\mathbf{x})},
+\end{align*}
+calculating what is called the \emph{posterior} distribution. In Bayesian statistics, the posterior is considered to contain complete information about the unknown quantities $\mathbf{z}$ given knowledge of our observations, and is used to calculate any quantity of interest, $f(\cdot)$, about the latent generative process via
+\begin{align}\label{eq:bayes-inference}
+	\mathbb{E}_{\mathbf{z}\sim p(\mathbf{z}|\mathbf{x})}\left[f(\mathbf{z})\right] &= \int f(\mathbf{z})p(\mathbf{z}\mid\mathbf{x})d\mathbf{z},
+\end{align}
+which is known as performing \emph{inference} on the model.
+
+We speak of the generative model as a forward process. Typically it factors as $p(\mathbf{z})p(\mathbf{x}\mid\mathbf{z})$, and so can be sampled from by ancestral sampling by first sampling $\mathbf{z}$, and then sampling $\mathbf{x}$ given $\mathbf{z}$. The calculation of the posterior is then, in a sense, the inverse process. We are given $\mathbf{x}$ and want to invert the model so that we can, e.g., sample from $\mathbf{z}$ given $\mathbf{x}$.
+
+One central challenge of Bayesian statistics is to perform this inversion process in order to effect inference. The inversion itself is considered synonymous with the term inference. Given that the numerator is specified by the model, the difficulty is in calculating the denominator,
+\begin{align*}
+	p(\mathbf{x}) &= \int p(\mathbf{z})p(\mathbf{x}\mid\mathbf{z})d\mathbf{z},
+\end{align*}
+known as the \emph{evidence}. This integration can only be done analytically---known as performing \emph{exact inference}---for simple models, such as those for which $p(\mathbf{z}\mid\mathbf{x})$ is in the same distribution family as $p(\mathbf{z})$. We must be content with approximations in most interesting situations.
+
+We now describe two families of approximate inference procedures, Markov chain Monte Carlo (MCMC) and variational inference (VI) that will be used in subsequent chapters. MCMC is a family of methods that treats inference as a sampling problem, and lets us draw approximate samples from the posterior to directly approximate \eqref{eq:bayes-inference}. VI is another family of approximate inference methods that treats inference as an optimization problem, and learns an approximation to the posterior, which can be used to approximate \eqref{eq:bayes-inference} by, e.g., importance sampling.
+
+\subsection{MCMC}
+MCMC \citep[Ch 12.3]{andrieu2003introduction, KollerFriedman2009} is a framework for generating approximate samples from a (potentially unnormalized) target distribution when we cannot do so directly. When used for Bayesian inference, the target distribution is the unnormalized posterior. MCMC involves constructing an iterative process, a so-called \emph{Markov chain}, that samples from distributions that become closer and closer to the target as the process proceeds. Formally,
+\begin{definition}
+	A (discrete-time) \emph{Markov chain} is a stochastic process satisfying the Markov property. That is, it is a countably infinite collection of random variables,
+	\begin{align*}
+		\mathcal{M} &= \{x_0,x_1,x_2,\ldots\}
+	\end{align*}
+	where $x_0\sim p^{(0)}(\cdot)$ is drawn from an initial state distribution, the variables belong to the same space, $x_t\in\mathcal{X}$, and the dynamics of the process satisfy the Markovian transition model, $g(x_t\mid \mathbf{x}_{\prec x_t})=g(x_t\mid x_{t-1})$, for $t\ge1$.
+\end{definition}
+To generate a (truncated) Markov chain trajectory, we first sample $x_0\sim p^{(0)}(\cdot)$. Then, we iterate the process by sampling $x_1\mid x_0\sim g(\cdot\mid x_0)$. This procedure is repeated $T$ times, sampling $x_t\sim g(\cdot\mid x_{t-1})$, to produce the trajectory, $\hat{\mathcal{M}}=\{x_0,x_1,\ldots,x_T\}$.
+
+Denote the distribution of $x_t$ as $p^{(t)}(\cdot)$. From the chain dynamics, this distribution is defined recursively as,
+\begin{align*}
+	p^{(t)}(x') &= \int_\mathcal{X}p^{(t-1)}(x)g(x'\mid x)dx.
+\end{align*}
+Assuming the process converges, one would expect
+\begin{align*}
+	p^{(t)}(x') &\approx p^{(t+1)}(x')\\
+	&= \int_\mathcal{X}p^{(t)}(x)g(x'\mid x)dx
+\end{align*}
+with, intuitively, equality holding in the limit $t\rightarrow\infty$. This equilibrium is known as the stationary distribution,
+\begin{definition}
+	A distribution, $\pi(\cdot)$, is a stationary distribution for a Markov chain with transition $g$ if it satisfies,
+	\begin{align*}
+		\pi(x')	&= \int_\mathcal{X}\pi(x)g(x'\mid x)dx,
+	\end{align*}
+	for all $x'\in\mathcal{X}$.
+\end{definition}
+If we can construct a Markov chain that converges to a stationary distribution, $\pi(\cdot)$, that is equal to the desired target, then approximate samples can be drawn from the target by simulating the Markov chain trajectory. In the context of Bayesian inference, the trajectory can be simulated to sample $\{\mathbf{z}_n\}_{n=1}^N$ correlated samples that are approximately distributed according to the posterior, which can then be used to estimate \eqref{eq:bayes-inference} by naive Monte Carlo (MC),
+\begin{align*}
+	\mathbb{E}_{\mathbf{z}\sim p(\mathbf{z}|\mathbf{x})}\left[f(\mathbf{z})\right] &\approx \sum^N_{n=1}f(\mathbf{z}_n).
+\end{align*}
+In general, however, there is no guarantee that a stationary distribution exists for a Markov chain, that is, that the chain converges, and even if it does, that the stationary distribution is unique. In the case of the latter, the stationary distribution reached depends upon the starting distribution, $p^{(0)}(\cdot)$.
+
+Fortunately, some (rather technical) sufficient conditions are known for providing the existence of a unique stationary distribution. In the case of when $\mathcal{X}$ is a finite-space, a Markov chain converges to a unique stationary distribution if it is irreducible and aperiodic \citep{andrieu2003introduction}. From a high level, the property of irreducibility means that any state is reachable from any other state at all times, and the property of aperiodicity means that the chain does not get trapped in cycles. Analogous technical conditions can be defined when $\mathcal{X}$ is a continuous space \citep[Theorem 8.2.14]{stachurski2009economic}.
+
+How can we construct Markov chains such that the target is the unique stationary distribution? One family of methods is based on constructing Markov transitions that are reversible,
+\begin{definition}
+	A Markov chain with transition, $g$ is \emph{reversible} if there exists a unique distribution $\pi$ such that, for all $x,x'\in\mathcal{X}$,
+	\begin{align*}
+		\pi(x)g(x'\mid x) &= \pi(x')g(x\mid x')
+	\end{align*}
+	This equation is termed \emph{detailed balance}.
+\end{definition}
+It can be shown very simply that if the Markov chain with transition $g$ is irreducible and aperiodic (or the equivalent conditions for a continuous-space) and it satisfies detailed balance, then $\pi$ is the unique stationary distribution. Integrating both sides of the detailed balance we have,
+\begin{align*}
+	\int_\mathcal{X}\pi(x)g(x'\mid x)dx &= \int_\mathcal{X}\pi(x')g(x\mid x')dx'\\
+	&= \pi(x'),
+\end{align*}
+and so by definition, $\pi$ must be the stationary distribution. By satisfying the sufficient conditions, the Markov chain converges to this unique distribution.
+
+Metropolis--Hastings (MH) \citep{gilks1995markov} is one such MCMC algorithm based on this idea. We will use it in Ch 4 to draw samples from the potentially rare event of failure in a neural network. It works by breaking up the Markov transition,
+\begin{align}\label{eq:mh-transition}
+	g(x'\mid x)=g'(x'\mid x)A(x',x)
+\end{align}
+into a proposal, $g'(x'\mid x)$, and an accept-reject step with probability $A(x',x)$ to correct for the discrepancy between the proposal and a valid transition.
+
+Substituting \eqref{eq:mh-transition} into the detailed balance and rearranging,
+\begin{align}\label{eq:mh-detailed-balance}
+	\frac{A(x',x)}{A(x,x')} &= \frac{\pi(x')}{\pi(x)}\frac{g'(x\mid x')}{g(x'\mid x)}.
+\end{align}
+Fixing the proposal, the acceptance probability can be defined as,
+\begin{align}\label{eq:mh-acceptance-prob}
+	A(x',x) &= \min\left\{1, \frac{\pi(x')}{\pi(x)}\frac{g'(x\mid x')}{g(x'\mid x)}\right\},
+\end{align}
+to satisfy \eqref{eq:mh-detailed-balance}. So, to apply the MH algorithm, we decide upon a proposal, $g'(x'\mid x)$, and simulate the trajectory as previously described, using \eqref{eq:mh-transition} and \eqref{eq:mh-acceptance-prob}. It can be shown that a wide variety of proposals satisfy the technical conditions for the chain to have a unique stationary distribution (the existence is guaranteed by detailed balance) \citep{andrieu2003introduction}.
+
+An application of MH is given in Ch 5 \citep{webb2018statistical}, where we apply it to perform inference on NNs. Let us describe the context. We often desire that a discriminative NN model satisfies a certain property. For instance, it could be that the network should not change its classification in some neighbourhood of an input, or that the network tracks a reference function with some degree of fidelity. In such scenarios, it is possible to quantify the property with a function, $s(\cdot)$, for which the property of interest is violated if and only if $s(\mathbf{x})\ge0$ for $\mathbf{x}\in\mathcal{X}$ in some subset, $\mathcal{X}$, of the input domain.
+
+Given a distribution $p(\cdot)$ over $\mathcal{X}$, we define a metric of how robust the NN is to the property as the probability that the property is violated under this input model,
+\begin{align}\label{eq:robustness-metric}
+	\mathcal{I}[s,p] &= \int_\mathcal{X}\mathbbm{1}_{s(\mathbf{x})\ge0}p(\mathbf{x})d\mathbf{x}.
+\end{align}
+The problem is that the event of failure is typically a rare one, and we cannot reliably estimate this integral using a naive MC estimate, drawing samples from $p(\mathbf{x})$. We apply an algorithm from the rare event estimation literature that breaks up the estimation of \eqref{eq:robustness-metric} into multiple successive events that are not rare, conditioned on the previous one, and MH is used at each step to sample from the event at that iteration. From a high level, multiple Markov chains are simulated with MH, using a cascade of target distributions, progressively directing the chains to the rare event of failure.
+
+In passing, we note that, whilst it is beyond the scope of this thesis to give a detailed survey of MCMC methods, there are a wealth beyond the simple example of MH. For instance, Hamiltonian Monte Carlo (HMC) \citep{Neal2011} is a type of MCMC method that uses Hamiltonian mechanics to reduce the correlation between successive samples relative to MH. In practice, this involves simulating Hamiltonian dynamics on an augmented space, using an accept-reject step to compensate for the bias introduced by the numerical solution to the diffferential equation. By both using gradient information and making larger transitions in an augmented space, the mixing time is lessened. We discuss this further in \S$6.2.1$.
+
+\subsection{Classical variational inference}
+Another class of approaches known collectively as \emph{variational inference} (VI) \citep{jordan1999introduction, BleiEtAl2016, zhang2018advances}, in its simplest form, supposes a family of distributions, $\mathcal{Q}$, over $\mathbf{z}$ and aims to find the member,
+\begin{align}\label{eq:classical-vi}
+	q^*_{\text{VI}}(\mathbf{z};\mathbf{x}) &\triangleq\text{argmin}_{q\in\mathcal{Q}}\text{KL}\left\{q(\mathbf{z})||p(\mathbf{z}\mid\mathbf{x})\right\}
+\end{align}
+that is closest to the posterior in the KL-divergence sense. We refer to this formulation as \emph{classical VI}. Once found, $q_{\text{VI}}^*(\mathbf{z};\mathbf{x})$ can be sampled from to directly estimate \eqref{eq:bayes-inference} by naive MC, or else combined with another MC approach such as importance sampling. In this way, the problem of inference is transformed into a problem of optimization.
+
+We use the notation $q^*_{\text{VI}}(\mathbf{z};\mathbf{x})$ to denote that the optimal member of the variational family is implicitly a function of $\mathbf{x}$ through the optimization problem, despite that no $q\in\mathcal{Q}$ is a function of $\mathbf{x}$.
+
+It is not possible, however, to directly optimize \eqref{eq:classical-vi}. The KL-divergence requires the calculation of the evidence, seen by expanding the divergence,
+\begin{align*}
+	\text{KL}\left\{q(\mathbf{z})||p(\mathbf{z}\mid\mathbf{x})\right\} &= \mathbb{E}_{\mathbf{z}\sim q(\mathbf{z})}\left[\ln q(\mathbf{z})\right] - \mathbb{E}_{\mathbf{z}\sim q(\mathbf{z})}\left[\ln p(\mathbf{x},\mathbf{z})\right] + \ln(p(\mathbf{x}))
+\end{align*}
+which, circularly, is the problem that we are trying to solve by \eqref{eq:classical-vi}!
+
+The solution is to optimize an alternative objective---clearly the log-evidence term, $\ln(p(\mathbf{x}))$, is not a function of $q$ and can be subtracted. Negating the resulting expression gives,
+\begin{align*}
+	\mathcal{L}_{\text{\scshape ELBo}}\{q,\mathbf{x}\} &\triangleq \mathbb{E}_{q}\left[\ln(p(\mathbf{x},\mathbf{z}))\right] - \mathbb{E}_q\left[\ln(q(\mathbf{z}))\right],
+\end{align*}
+an expression known as the \emph{evidence lower bound} ({\scshape ELBo}). Thus solving \eqref{eq:classical-vi} is equivalent to minimizing the negative {\scshape ELBo},
+\begin{align}\label{eq:neg-elbo}
+	q^*(\mathbf{z}) &\triangleq\text{argmin}_{q\in\mathcal{Q}}-\mathcal{L}_{\text{\scshape ELBo}}\{q,\mathbf{x}\}.
+\end{align}
+
+The {\scshape ELBo} can be given several useful interpretation. Firstly, interpreting the two terms in its definition, we see that $\mathbb{E}\left[\ln(p(\mathbf{x},\mathbf{z}))\right]$ rewards joint configurations of $(\mathbf{x},\mathbf{z})$ with high probability, permitting $\mathbf{x}$ to be explained or reconstructed, whereas $H(q)=-\mathbb{E}\left[\ln(q(\mathbf{z}))\right]$ rewards $q$ with high entropy, i.e., being less informative, thus providing a regularizing effect.
+
+A second interpretation of the {\scshape ELBo} is given by rewriting it as,
+\begin{align*}
+	\mathcal{L}_{\text{\scshape ELBo}}\{q,\mathbf{x}\} &= \mathbb{E}\left[\ln(p(\mathbf{x}\mid\mathbf{z}))\right] - \text{KL}\left\{q(\mathbf{z})||p(\mathbf{z})\right\}.
+\end{align*}
+The first term, $\mathbb{E}\left[\ln(p(\mathbf{x}\mid\mathbf{z}))\right]$, is again a reconstruction term that rewards $q$ that explain $\mathbf{x}$ well, and the second term penalizes $q$ that deviate from the prior, $p(\mathbf{z})$, that is, that are as simple as the prior, thus providing a regularizing effect.
+
+The reason why the {\scshape ELBo} is called the evidence lower bound, is that it lower-bounds the log-evidence,
+\begin{align*}
+	\ln\left(p\left(\mathbf{x}\right)\right) &= \text{KL}\left\{q(\mathbf{z})||p(\mathbf{z}\mid\mathbf{x})\right\} + \mathcal{L}_{\text{\scshape ELBo}}\\
+	&\ge \mathcal{L}_{\text{\scshape ELBo}},
+\end{align*}
+noting that the KL-divergence is always nonnegative. This fact will prove useful in the next section.
+
+In classical variational inference, the simplest variational family, $\mathcal{Q}$ used is the \emph{mean-field variational family},
+\begin{align*}
+	q(\mathbf{z}) &\triangleq \prod^D_{d=1}q_d(z_d),
+\end{align*} 
+assuming each latent variable $z_d$ is independent of the remainder.
+
+One simple algorithm to solve \eqref{eq:neg-elbo} is coordinate ascent variational inference (CAVI) \citep{BleiEtAl2016}. It works by iteratively optimizing each $q_d$ in the mean-field family, holding the others fixed. Consider the $d$th latent variable $z_d$. The optimal $q_d(\cdot)$ is,
+\begin{align}\label{eq:cavi}
+	q^*_d(z_d) &\propto \exp\left\{\mathbb{E}_{q_{-d}}\left[\ln\left(p(z_d\mid\mathbf{z}_{-d},\mathbf{x})\right)\right]\right\},
+\end{align}
+where $\mathbf{z}_{-d}\triangleq\{z_1,z_2,\ldots,z_{d-1},z_{d+1},\ldots,z_D\}$, $q_{-d}(\mathbf{z}_{-d})\triangleq\prod_{i\neq d}q_i(z_i)$, and $p(z_d\mid\mathbf{z_{-d}},\mathbf{x})$ is known as the \emph{complete conditional}. Applying this algorithm, we sample a $d$ at random, update $z_d$ using \eqref{eq:cavi}, and repeat until the {\scshape ELBo} has satisfied some termination criterion, such as that its relative change is less than a small constant, $\delta$.
+
+A requirement of this method is that the optimal expression for $q^*_d(\cdot)$ is calculable in closed-form, for which it turns out is possible when the complete conditional belongs to the exponential family. Other classical variational inference algorithms require similar assumptions of conjugacy and often require lengthy model specific derivations to determine their update equations. This is one motivation for amortized VI, to be explained in \ref{sec:amortized-vi}.
+
+\subsection{Expectation propagation}
+Expectation propagation \citep{minka2001expectation, opper2005expectation, GelmanEtAl2014} is a type of variational inference, in the broader sense of the term, that differs from classical VI (and amortized VI in its simplest form) by finding the member of the variational family minimizing the reverse KL-divergence,
+\begin{align}\label{eq:ep}
+	q^*_{\text{EP}} &\triangleq \argmin_{q\in\mathcal{Q}}\text{KL}\left\{p(\mathbf{z}\mid\mathbf{x})||q(\mathbf{z})\right\}
+\end{align}
+rather than the forward KL-divergence of \eqref{eq:classical-vi}. In the method, it is assumed we have a factorization,
+\begin{align*}
+	p(\mathbf{z}\mid\mathbf{x}) &\propto \prod^K_{k=1}f_k(\mathbf{z})
+\end{align*}
+and that the variational approximation factors as,
+\begin{align*}
+	q(\mathbf{z}) &\propto \prod^K_{k=1}g_k(\mathbf{z}).
+\end{align*}
+The terms, $\{f_k\}$ are known as the target pieces, and the terms $\{g_k\}$ the site approximations. It is further assumed that the sites belong (up to normalization) to the same exponential family, for example,
+\begin{align*}
+	%f_k(\mathbf{z}) &\propto h(\mathbf{z})g(\eta_k)\exp(\eta_k^Tu(\mathbf{z})),\\
+	g_k(\mathbf{z}) &\propto h(\mathbf{z})g(\nu_k)\exp(\nu_k^Tu(\mathbf{z}))
+\end{align*}
+for $k=1,2,\ldots,K$.
+
+The algorithm works as follows. We choose a site, $g_k$, and form the so-called \emph{cavity distribution},
+\begin{align*}
+	q_{-k}(\mathbf{z}) &\propto \frac{q(\mathbf{z})}{g_k(\mathbf{z})},
+\end{align*}
+which can be done by simply subtracting the natural parameters,
+\begin{align*}
+	q_{-k}(\mathbf{z}) &\propto h(\mathbf{z})g(\nu_{-k})\exp(\nu_{-k}^Tu(\mathbf{z})),
+\end{align*}
+where $\nu_{-k}=\nu-\nu_k$. Then we form the \emph{tilted distribution} as,
+\begin{align*}
+	q_{\setminus k}(\mathbf{z}) &\propto f_k(\mathbf{z})q_{-k}(\mathbf{z}).
+\end{align*}
+Effectively, in doing so, we have replaced the effect of the $k$th site approximation with the $k$th target piece.
+
+Finally, we update the site, $g_k$, so that, $\text{KL}\left\{q_{\setminus k}(\mathbf{z})||q(\mathbf{z})\right\}$ is minimized. It turns out that when $q$ belongs to an exponential family, the solution to this is equivalent to,
+\begin{align*}
+	\mathbb{E}_{q_{\setminus k}}[u(\mathbf{z})] &= \mathbb{E}_{q}[u(\mathbf{z})],
+\end{align*}
+that is, that the expected sufficient statistics match. This method depends on being able to determine the sufficient statistics of $q$ under the tilted distribution analytically, which depends in general on the form of $\{f_k\}$. This procedure is then repeated for the other site approximations until convergence is attained. 
+
+We note that despite minimizing the local divergences in the scope of each site, there is no theoretical guarantee that the global divergence of \eqref{eq:ep} is minimized. However, EP has been demonstrated to converge in practice on many problems.
+
+EP can be thought of as a message passing algorithm, with each site approximation passing a message to all other sites at each step. Indeed, loopy belief propagation \citep[Ch 11]{KollerFriedman2009}, a message passing algorithm on graphical models, is a specific case of EP. We note that coordinate ascent VI can also be thought of as a message passing algorithm---the solution for $q_d(\cdot)$ can be thought of as the calculation of the message for ``node $d$'' given the current state of information from the other $D-1$ nodes. This message is then passed to the other nodes, repeating the process synchronously or asynchronously.
+
+In Ch 4, we give an application of an extension of the basic EP algorithm presented here to distributed Bayesian learning. Our framework is particularly useful for learning Bayesian NNs. NN discriminative models achieve state-of-the-art performance in many tasks when trained on big data. However, special methods are required to train these models when the model parameters and/or the dataset is too large to fit on a single machine. Our work focuses on the latter case, and divides the data between a number of worker nodes, where there is a single target piece per division of the data. Each worker then calculates its site update using a modification of EP that is designed to be robust to lags in communication from the other workers. After convergence, we can take the mean of the variational approximation as a point estimate of the parameters, and use the variance of the same approximation to estimate our uncertainty in the outputs.
+
+\subsection{Modern variational inference}\label{sec:modern-vi}
+Classical VI suffers several shortcomings. Restrictive assumptions must be placed on the form of the distributions in the model, usually conditions of conjugacy, and lengthy derivations are often required to determine the closed-form update equations. In addition, classical VI does not permit model learning other than by lifting the problem to be one of inference, and requires optimization each time a new $\mathbf{x}$ is encountered. These considerations motivate the framework of modern VI \citep{RezendeEtAl2014, KingmaWelling2013, zhang2018advances}.
+
+First, let us modify the problem setup. Assume without loss of generality that the model is a function of deterministic parameters, $\phi$, and that it decomposes as,
+\begin{align*}
+	p_\phi(\mathcal{D},\mathbf{z}) &\triangleq \prod_{n=1}^Np'_\phi(\mathbf{x}_n,\mathbf{z}).
+\end{align*}
+We modify the optimization problem accordingly to,
+\begin{align*}
+	\min_{\phi,\psi}\mathbb{E}_{\mathbf{x}_n\in\mathcal{D}}\left[\mathbb{E}_{\mathbf{z}\in q_\psi(\cdot)}\left[\ln\left(q_\psi\left(\mathbf{z}\right)\right) - \ln\left(p_\phi\left(\mathbf{x}_n,\mathbf{z}\right)\right)\right]\right].
+\end{align*}
+Modern VI, also known as Monte Carlo VI, optimizes this by gradient descent with respect to $\theta=\{\psi,\phi\}$, estimating the gradients by the method of Monte Carlo. This poses two problems. Firstly, how can we take the expectation over $\mathbf{x}_n\sim\mathcal{D}$ given that the dataset may be large? Secondly, how can we take the gradient with respect to $\theta$, which involves exchanging a derivative and an expectation?
+
+The first problem can be solved by taking a stochastic gradient, that is, approximating the expectation over the $N$ data points by a minibatch of $N'<<N$ samples from $\mathcal{D}$. We note that stochastic gradients have been previously used in forms of classical VI \citep{HoffmanEtAl2013}. Also, the minibatch size must be large for effective parameter updates in this simple setting when the variational family is not directly a function of $\mathbf{x}$. (The case of when the variational family is a function of $\mathbf{x}$ is known as amortization and will be discussed in the sequel.) When the dataset is on the order of 1000 samples or less, we can forego minibatching.
+
+The second problem is more difficult, and will be dealt with using one of two tricks.
+
+{\bfseries Score-function estimators.} Ignoring for the moment the expectation over $\mathbf{x}$, we want to take the gradient of
+\begin{align*}
+	\mathcal{L}(\mathbf{x}) &\triangleq \int\left(\ln\left(p_\phi\left(\mathbf{x},\mathbf{z}\right)\right) - \ln\left(q_\psi\left(\mathbf{z}\right)\right)\right)q_\psi(\mathbf{z})d\mathbf{z}.
+\end{align*}
+The gradient with respect to the model parameters is,
+\begin{align*}
+	\nabla_\phi\mathcal{L}(\mathbf{x}) &= \int\nabla_\phi\ln\left(p_\phi(\mathbf{x},\mathbf{z})\right)q_\psi(\mathbf{z})d\mathbf{z}\\
+	&= \mathbb{E}_{\mathbf{z}\sim q(\cdot)}\left[\nabla_\phi\ln\left(p_\phi(\mathbf{x},\mathbf{z})\right)\right].
+\end{align*}
+The gradient with respect to the inference network parameters is,
+\begin{align*}
+	\nabla_\psi\mathcal{L}(\mathbf{x}) &= \int\left(\ln\left(p_\phi\left(\mathbf{x},\mathbf{z}\right)\right)\nabla_\psi q_\psi\left(\mathbf{z}\right) - \nabla_\psi\left(q_\psi(\mathbf{z})\ln\left(q_\psi\left(\mathbf{z}\right)\right)\right)\right)d\mathbf{z}\\
+	&= \int\left(\ln p_\phi\left(\mathbf{x},\mathbf{z}\right) - \ln\left(q_\psi\left(\mathbf{z}\right)\right)\right)\nabla_\psi q_\psi\left(\mathbf{z}\right)d\mathbf{z}\\
+	&= \int\left(\ln p_\phi\left(\mathbf{x},\mathbf{z}\right) - \ln\left(q_\psi\left(\mathbf{z}\right)\right)\right)q_\psi(\mathbf{z})\nabla_\psi\ln\left(q_\psi\left(\mathbf{z}\right)\right)d\mathbf{z}\\
+	&= \mathbb{E}_{\mathbf{z}\sim q_\psi(\cdot)}\left[\left(\ln\left(p_\phi\left(\mathbf{x},\mathbf{z}\right)\right) - \ln\left(q_\psi\left(\mathbf{z}\right)\right)\right)\nabla_\psi\ln\left(q_\psi(\mathbf{z})\right)\right],
+\end{align*}
+where we have used the fact that the expected score is zero, $\mathbb{E}_p[\nabla\ln p(\mathbf{x})]=0$, and the so-called ``log-derivative trick'' that $\nabla p(\mathbf{x})=p(\mathbf{x})\nabla\ln(p(\mathbf{x}))$. Estimators for the inference network gradient based on the log-derivative trick are known as score-function estimators \citep{SchulmanEtAl2015}.
+
+Both gradients can be estimated by naive MC,
+\begin{align*}
+	\nabla_\phi\mathcal{L}(\mathbf{x}) &\approx \frac{1}{M}\sum^M_{m=1}\nabla_\phi\ln\left(p_\phi\left(\mathbf{x},\mathbf{z}_m\right)\right)\\
+	\nabla_\psi\mathcal{L}(\mathbf{x}) &\approx \frac{1}{M}\sum^M_{m=1}\hat{L}_m\nabla_\psi\ln\left(q_\psi\left(\mathbf{z}_m\right)\right),
+\end{align*}
+where $\hat{L}_m=\ln\left(p_\phi(\mathbf{x},\mathbf{z}_m)\right) - \ln\left(q_\psi(\mathbf{z}_m)\right)$ is known as the learning signal.
+
+The estimate for the model gradient is unproblematic. However, the estimate of the inference network gradient has high variance due to the high variability of the learning signal---is has unbounded magnitude and will typically be large during the initial phase of learning when $q_\psi(\mathbf{z}_m)$ diverges greatly from $p_\phi(\mathbf{x}\mid\mathbf{z}_m$. Indeed, it was originally surmised that score-function estimators were infeasible for learning due to the high variance encountered.
+
+Using the fact that the expected score is zero, a term, $\kappa$, that is not a function of the latent variable (but may be a function of the input) known as a \emph{control variate} can be subtracted from the learning signal without effecting equality,
+\begin{align*}
+	\nabla_\psi\mathcal{L}(\mathbf{x}) &= \mathbb{E}_{\mathbf{z}\sim q_\psi(\cdot)}\left[(\hat{L}-\kappa(\mathbf{x}))\nabla_\psi\ln\left(q_\psi(\mathbf{z})\right)\right].
+\end{align*}
+An effective control variate is highly correlated with the learning signal. One method uses a feedforward NN that tracks the learning signal \citep{MnihGregor2014}.
+
+Other control variates have been devised. For instance, in the method of \citet{MnihRezende2016}, a so-called \emph{Monte Carlo objective},
+\begin{align}\label{eq:mc-objective}
+	\mathcal{L}^K(\mathbf{x}) &\triangleq \mathbb{E}_{\prod_kq_\psi(\cdot)}\left[\ln\left(\frac{1}{K}\sum^K_{k=1}\frac{p_\phi(\mathbf{x},\mathbf{z}_k)}{q_\psi(\mathbf{z}_k)}\right)\right],
+\end{align}
+is optimized. This multi-sample objective is provably a tighter bound on the log-evidence, tightening as $K\rightarrow\infty$ \citep{BurdaEtAl2016}. Repeating an analogous procedure to the single-sample objective (see \citep[Appendix D]{MnihRezende2016}),
+\begin{align*}
+	\nabla_\phi\mathcal{L}^K(\mathbf{x}) &\approx \sum^K_{k=1}\tilde{w}_k\nabla_\phi\ln(p_\phi(\mathbf{x},\mathbf{z}_k))\\
+	\nabla_\psi\mathcal{L}^K(\mathbf{x}) &\approx \sum^K_{k=1}\left(\hat{L}(\mathbf{z}_{1:K})\nabla_\psi q(\mathbf{z}_k) - \tilde{w}_k\nabla_\psi\ln\left(q(\mathbf{z}_k)\right)\right),
+\end{align*}
+where
+\begin{align*}
+	\tilde{w}_k &\triangleq \frac{p_\phi(\mathbf{x},\mathbf{z}_k)/q_\psi(\mathbf{z}_k)}{\sum^K_{k=1}p_\phi(\mathbf{x},\mathbf{z}_k)/q_\psi(\mathbf{z}_k)}
+\end{align*}
+is a normalized importance weighting term, and
+\begin{align*}
+	\hat{L}(\mathbf{z}_{1:K}) &= \ln\left(\frac{1}{K}\sum^K_{k=1}\frac{p_\phi(\mathbf{x},\mathbf{z}_k)}{q_\psi(\mathbf{z}_k)}\right)
+\end{align*}
+is analogous to the learning signal for the single-sample objective. Similary to the single-sample case, the gradient estimate for $\phi$ poses no problem, being the convex combination of log-gradient terms. However, the gradient estimate for $\psi$ is expected to have high variance from two sources.
+
+Firstly, and similarly to the single-sample case, the learning signal is unbounded in magnitude and is expected to be large during the initial phase of learning when all samples from the proposal explain the data poorly. Secondly, and differently from the single-sample case, the same learning signal is applied to all samples from the proposal---consequently, the gradient for a sample that scores highly under the model is not given any more weight than another sample that scores poorly, within the set of $K$ proposal samples. This is in contrast to the second term that assigns credit to the gradients by multiplying by normalized importance weights.
+
+\citet{MnihRezende2016} propose to remedy these two sources of variance by subtracting a baseline based on previous estimates of $\hat{L}(\mathbf{z}_{1:K})$, as well as subtracting a term from the learning signal for each $\mathbf{z}_k$ that is highly correlated with the learning signal but is only a function of $\{\mathbf{z}_j\}_{j\neq k}$.
+
+For score-function estimators, control variates are essential to so reduce the variance on the gradient estimates that model learning is feasible.
+
+{\bfseries Pathwise estimators.} Another technique for estimating the parameter gradients is based on the following trick. Suppose that we can express our latent variable $\mathbf{z}$ in terms of a function, $f_\psi$, and some random noise, $\epsilon$, that is not a function of the parameters. That is, suppose $\mathbf{z}=f_\psi(\epsilon)$. For example, if $\mathbf{z}$ has a diagonal multivariate normal distribution, we could use $\mathbf{z}=\mu_\psi(\mathbf{x}) + \sigma_\psi(\mathbf{x})\otimes\epsilon$, where $\epsilon$ is i.i.d. standard Gaussian noise. Using this so-called ``reparametrization trick,'' we can now conveniently exchange the order of differentiation and expectation to estimate the inference parameters' gradient,
+\begin{align*}
+	\nabla_\psi\mathcal{L}(\mathbf{x}) &= \nabla_\psi\mathbb{E}_{p(\epsilon)}\left[\ln q_\psi(\mathbf{z}(\epsilon)) - \ln p_\phi(\mathbf{x},\mathbf{z}(\epsilon))\right]\\
+	&= \mathbb{E}_{p(\epsilon)}\left[\nabla_\psi\left(\ln q_\psi(\mathbf{z}(\epsilon)) - \ln p_\phi(\mathbf{x},\mathbf{z}(\epsilon))\right)\right]\\
+	&\approx \frac{1}{M}\sum^M_{m=1}\nabla_\psi\left(\ln q_\psi(\mathbf{z}(\epsilon_m)) - \ln p_\phi(\mathbf{x},\mathbf{z}(\epsilon_m))\right).
+\end{align*}
+The estimator for the gradient with respect to $\phi$ is the same as for score-function estimators. Reparametrization gradients exist for a variety of continuous distributions \citep{figurnov2018implicit}, including relaxations of discrete-valued ones \citep{MaddisonEtAl2016, JangEtAl2016}. They are easily formed for normalizing flows, to be discussed in the next section. Truely discrete distributions, however, require score-function estimates at present, due to the requirement that we must be able to differentiate through the log-density with respect to its input. Although there does not exist a proof, it is commonly held wisdom that pathwise estimators have significantly lower variance than score-function ones (using control variates) in practice \citep{ruiz2016generalized}.\vspace{6pt}
+
+Modern VI thus enables scalable inference with the use of stochastic gradients, and generic inference by the use of Monte Carlo gradient estimates, only requiring sampling, the calculation of certain gradient terms (which can be performed by automatic differentiation in a modern deep learning software framework), and techniques for reducing the variance of the MC gradients. As a side-product, we get model learning ``for free.'' NNs can be used in both the model and the variational family, although this is atypical in the basic setup where the variational family only implicitly conditions on the data.
+
+Although not widely used in practice, alternatives to the KL-divergence have been developed. Take the example of R\'enyi's $\alpha$-divergence \citep{LiTurner2016}, defined as
+\begin{align*}
+	D_\alpha\left\{p||q\right\} &\triangleq \frac{1}{\alpha-1}\ln\int_\mathcal{X}p(\mathbf{x})^\alpha q(\mathbf{x})^{1-\alpha}d\mathbf{x},
+\end{align*}
+where $\alpha>0$, $\alpha\neq1$ for two distributions on $\mathcal{X}$. This metric recovers the KL-divergence in the limit as $\alpha\rightarrow1$ and a function of the Hellinger distance for $\alpha=0.5$, amongst others. Replacing the KL-divergence in the derivation of the {\scshape ELBo} results in the new objective,
+\begin{align*}
+	\mathcal{L}_\alpha &\triangleq \frac{1}{\alpha-1}\ln\mathbb{E}_{q_\psi}\left[\left(\frac{p_\phi(\mathbf{x},\mathbf{z})}{q_\psi(\mathbf{z})}\right)^{1-\alpha}\right], 
+\end{align*}
+which is optimized similarly to the ELBO.Interestingly, the procedure also works for $\alpha<0$, in which case $\mathcal{L}_\alpha$ is an upper bound on the model evidence.
+
+Similar extensions to modern VI have been developed for the more general family of $f$-divergences \citep{bamler2017perturbative}, as well as the Wasserstein distance \citep{ranganath2016operator, liu2016stein}. It remains an open question in which scenarios such measures should be prefered to the KL-divergence.
+
+In another line of research, the objective itself has been modified. In the importance weighted autoencoder, the variational family is used as a proposal for an importance weighted estimate of the marginal log-likelihood. This is the Monte Carlo objective of \eqref{eq:mc-objective}, albeit used with a pathwise rather than a score-function estimator. In the filtering variational objective \citep{MaddisonEtAl2017, LeEtAl2017, NaessethEtAl2017}, the variational family is used as a proposal for sequential Monte Carlo, the algorithm in a sense being ``differentiated through.'' Such methods have the advantage of providing a different bias/variance tradeoff for the model parameter gradient estimates, compensating for some of the lack of expressivity in the variational family under consideration.
+
+\subsection{Amortized variational inference}\label{sec:amortized-vi}
+In some circumstances, we require to solve a large number of related inference problems, or require to solve, at a later time, additional inference problems similar to the one at hand. For instance, consider the VAE model,
+\begin{align*}
+	p_\phi(\mathcal{D},\mathbf{z}) &= \prod^D_{d=1}p_\phi(\mathbf{x}_d\mid\mathbf{z}_d)p(\mathbf{z}_d),
+\end{align*}
+where $\mathcal{D}$ is typically a dataset of images, and $p_\phi$ is a decoder that reconstructs a distribution over the image $\mathbf{x}_d$ given a latent code, or encoding, $\mathbf{z}_d$. Notice that each latent $\mathbf{z}_d$ is local to each datum $\mathbf{x}_d$, and that the inference problems are connected through the shared weights $\phi$. From a graphical model perspective, the $\left\{\mathbf{x}_d,\mathbf{z}_d\right\}$ exist on a plate, and $\phi$ is a global variable outside the plate. We ought to share the statistical strength across similar data while learning $\phi$, in the process solving a number of related inference problems.
+
+Amortized inference \citep{dayan1995helmholtz, RezendeEtAl2014, KingmaWelling2013} extends modern VI for this purpose by making the variational family explicitly a function of the data, forming what is known as an \emph{inference network}. In the case of the VAE, the inference network takes the form,
+\begin{align*}
+	q_\psi(\mathbf{z}\mid\mathcal{D}) &= \prod^D_{d=1}q_\psi(\mathbf{z}_d\mid\mathbf{x}_d).
+\end{align*}
+Plugging this definition into, e.g., the {\scshape ELBo}, and performing learning as per modern VI allows us to simultaneously solve the related inference problems for each datum whilst performing model learning on the global parameters. After learning, we can approximate the posterior, $p_\phi(\mathbf{z}'|\mathbf{x}',\mathcal{D})$, for a datum $\mathbf{x}'$ not seen during learning but similar to the dataset with the inference network, $q_\psi(\mathbf{z}'|\mathbf{x}')$.
+
+NNs are not typically used with non-amortized modern VI (althought they are not precluded from doing so). In contrast, NNs \emph{are} widely used with amortized VI, both for constructing the required inference network approximating the posterior---which must necessary model the complex relationship between the variable that is conditioned on and the distribution of the latent variables---and for modeling. Modern amortized VI has opened up a new class of models known as \emph{deep generative models} including the VAE and others \citep{GregorEtAl2015,eslami2016attend,bornschein2017variational} that make use of deep-learning innovations for discriminative modeling.
+
+The performance of both inference amortization and model learning depends on how closely our inference network can approximate the true posterior for the current model parameters, $\phi$. Clearly this is true for inference amortization: the quality of inference amortization can be measured by $\text{KL}\left\{q(\mathbf{z}\mid\mathbf{x})||p(\mathbf{z}\mid\mathbf{x})\right\}$. With regards to model learning, we see from the relation $\ln(p(\mathbf{x}))=\text{KL}\left\{q(\mathbf{z}\mid\mathbf{x})||p(\mathbf{z}\mid\mathbf{x})\right\}+\mathcal{L}_{\text{\scshape ELBo}}(\mathbf{x})$ that the gradient update to the model parameters will be more in the direction of the true marginal log-likelihood the smaller is the gap between the inference network and true posterior. If the inference network is poorly constructed so this gap can never be sufficiently small, the model learning will be biased. In the next section and the following chapter, we discuss two aspects of suitably designing inference networks. Both the factorization of the distribution of $q$ and the individual distributions for each factor must be appropriately chosen for amortized VI to work well in practice.
+
+Amortized inference can also be motivated from a cognitive perspective \citep{Gershman2014}. The human brain appears to be able to cache and compose the results of previous inferences to answer new queries. It can be demonstrated from simple experiments that the answer to a query can be predicted from a person's answer to a simpler query if that simpler query occured first and requires a subinference of the more complex one. \emph{Amortization expresses the experimentally observable interaction between inference and memory}.
+
+At a high level, amortization is conceptually different from distillation \citep{hinton2015distilling}. Distillation involves the compression of the ``knowledge'' in an ensemble of models trained by supervised learning on the same task. The motivation is typically to speed up inference on the deployed model without degrading performance. In contrast, in amortization, the knowledge is ``distilled'' across multiple tasks for a single model.
+
+\subsection{Discussion}
+In this section, we have introduced the three inference methods used in the following three paper chapters. Here, we discuss the relative merits and disadvantages of each.
+
+In Ch 3, we present an algorithm for designing better inference networks in order to improve both inference amortization and model learning. Amortized VI is a general purpose and scalable inference method. It has the advantage over classical VI and EP of not requiring model-specific derivations, and the advantage over MCMC of faster convergence in practice. Moreover, the inference amortization can be used to perform model learning of deterministic parameters, which allows us to incorporate powerful NNs into the model---take the example of the VAE, which uses a NN to learn a compact distributed representation from its high-dimensional image observations. Amortized VI requires flexible NN density estimators to be effective, which we outline in the next section.
+
+EP is well suited for the distributed Bayesian learning framework of Ch 4 for a number of reasons. The reverse direction of the KL-divergence of the EP objective in \eqref{eq:ep}, means that the mismatch between $p(\mathbf{z}|\mathbf{x})$ and $q(\mathbf{z})$ is not penalized when $q(\mathbf{z})=0$. The consequence of this is that when $q$ is a simple parametric form such as a multivariate normal distribution, it will tend to fit one of the modes of $p(\mathbf{z}|\mathbf{x})$. In contrast, the forward KL-divergence of the classical VI objective in \eqref{eq:classical-vi} penalizes mismatch from $p$ for all $p(\mathbf{z}|\mathbf{x})>0$. This tends to lead to solutions that are ``mass covering'' and overdispersed, with a mode between the true modes of $p$, if $p$ is multimodal. Consider our application of learning Bayesian NNs. We learn a variational approximation to the model parameters, and afterwards take the mean of this multivariate normal variational approximation as our point estimate of the parameters. If this does not match a mode of the posterior then the solution will be poor. This is one reason that EP is well-suited for this application over classical VI. Also, the natural interpretation of the algorithm as one based on message passing makes it well-suited for \emph{distributed} learning. We note that MCMC has also been used for learning of Bayesian NNs \citep{Neal2012}.
+
+MCMC is well suited to the application of measuring NN robustness in Ch 5 because the problem is often defined on a large dimensional input space and MCMC scales relatively favourably in the input dimension. There is another family of methods for rare-event estimation based on importance sampling known as the \emph{cross-entropy method} \citep{de2005tutorial}. However, as we discovered, they do not scale in practice to the large input dimensions of NN image classifier problems, which can be in the thousands. The method requires estimating a proposal density for importance sampling at each level of event rareness, and suffers from the curse of dimensionality. In contrast, adaptive multi-level splitting (AMLS) \citep{guyader2011simulation}, which is based on MCMC inherits the favourable scaling of the MCMC technique chosen. For instance, it is known that MH with a random walk proposal takes $O(D^2)$ computation time for the Markov chain to reach a nearly independent point, where $D$ is the input dimension \citep{Neal2011}. On the other hand, our method also inherits the challenging aspects of MCMC, namely that it is hard to assess convergence in the trajectory of a Markov chain and to construct a Markov transition with quick convergence. Our strategy is simply to run the chains for a long burn-in time, although we do suggest in Ch 6 how one might construct a faster Markov transition, which would be required for scaling the method to ImageNet size models.
+
+We point out that the inference methods presented apply more broadly than to just Bayesian inference. MCMC can be used to sample from an unnormalized density, not necessarily the posterior. VI in its many forms can be used to match a density estimator to a target distribution, which is not necessarily the posterior. The techniques can be used to estimate a probabilistic expectation, which does not necessarily have to be over a posterior distribution. Indeed, this is how inference is used in Ch 5, where the target distribution is defined by the region of failure of the NN under the property to be verified.
+
+On a historical note, many of the inference methods introduced in this chapter have their genesis in the statistical physics literature. MCMC methods were originally introduced to sample from models arising in statistical physics \citep{metropolis1953equation}. Also, variational inference with the mean-field approach was introduced to model spin glasses, which are types of disordered magnets \citep{opper2001advanced}. \citet{dayan1995helmholtz} were the first to introduce the concept of the inference network, or ``recognition model'' as they termed it. They draw a connection between the alternative explanations a latent variable generative model makes of the data to the configurations of a physical system, and connect learning to the principle of minimum energy. Their model, the Helmholtz machine is learnt by the wake-sleep algorithm, which differs from algorithms such as SGD on the {\scshape ELBo} in that it optimizes a separate objective for the model and inference network.

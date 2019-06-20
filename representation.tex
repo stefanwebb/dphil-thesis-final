@@ -1,0 +1,244 @@
+\section{Neural distribution representation}
+Recall that one of the main criteria determining the performance of amortized VI is whether there exists an inference network $q_\psi(\mathbf{z}\mid\mathbf{x})$ from the family $\psi\in\Psi$ such that $\text{KL}\infdivx{q_\psi(\mathbf{z}|\mathbf{x})}{p_\phi(\mathbf{z}|\mathbf{x})}\approx0$ for each $\phi$ during optimization of the {\scshape ELBo} objective. NNs are useful for amortized VI in that they can be used to represent flexible families of variational approximations in order that this holds. NNs distribution representations are also useful for modeling, since they permit us to learn distributed representations of our model variables, making use of the powerful function approximation power of deep architectures.
+
+In this section, we give an overview of the details of different techniques for constructing such distribution representations from NNs. We begin with a discussion of two facets of representation which are, roughly speaking, the dependency structure of the representation and the conditional distribution of each variable. We then show how to construct univariate conditional distributions with simple parametric forms, like the Gaussian or Bernoulli distribution, whose parameters are a complex nonlinear mapping of the parent variables. Next, we discuss how this method can be extended to multivariate conditional distributions. Following this, we show how to construct multimodal distributions from simple parametric forms, i.e. mixture models. And finally, we describe a set of methods known as normalizing flow for producing a rich family of representations from random noise and bijective transformations.
+
+%\todo[inline]{TR: This needs a lot more linking to the rest of the thesis.  Use a more expressive title and start with
+%	a longer paragraph that links the chapter to the goals in the abstract / intro.  You dive straight into the
+%	technical stuff, but miss out anything about why you are talking about it.  You should also maybe have a short
+%	summary of what you will go through in the chapter to help people establish if they should read it or not.}
+
+%Flexible representation of distributions is important for both Bayesian modeling and variational inference, and thus in this chapter, our goal is to give a selective survey of methods for flexibly representing distributions using neural networks.
+
+%\todo[inline]{TR: I like this distinction and I think its a good way of introducing things.}
+
+\subsection{Factorization and parametrization}
+Denote the target distribution to be represented as $p^*(\mathbf{x}\mid\mathbf{y})$, where the input variables are $\mathbf{x}=\{x_1,x_2,\ldots,x_N\}\in\mathcal{X}$, the variables being conditioned upon, $\mathbf{y}=\{y_1,y_2,\ldots,y_M\}\in\mathcal{Y}$, and it may be the case that $\mathbf{y}=\emptyset$. Both $\mathbf{x}$ and $\mathbf{y}$ may comprise continuous or discrete valued variables (or a mixture), and we use the term \emph{distribution} to encompass both densities and mass functions. We denote our representations as belonging to a family of distributions, $\mathcal{P}=\{p_\phi(\mathbf{x}\mid\mathbf{y})\mid\phi\in\Phi\}$, with learnable parameters $\phi$, hopefully containing a member close to $p^*(\mathbf{x}\mid\mathbf{y})$.
+
+We draw a distinction between two facets of representation: \emph{factorization} and \emph{parametrization}. Suppose our representation is of the form,
+\begin{align}\label{eq:factorization}
+	p_\phi(\mathbf{x}\mid\mathbf{y}) &= \prod_{n=1}^Np_{\phi_n}(x_n\mid\mathbf{x}'_n,\mathbf{y})
+\end{align}
+where each $\mathbf{x}'_n$ is an arbitrary subset of $\mathbf{x}\setminus\{x_n\}$. ``Factorization'' refers to the way that \eqref{eq:factorization} is broken up into factors, $\{p_{\phi_n}\}$, and reflects the assumptions on the structure in a distribution. On the other hand, ``parametrization,'' as we define it, refers to the specification of the functional forms for each factor $p_{\phi_n}$.
+
+In the case of \eqref{eq:factorization}, each factor, $p_{\phi_n}$, is a conditional distribution---such factorizations are known as \emph{Bayesian networks} (BNs) (more strictly, \emph{conditional Bayesian networks} when $\mathbf{y}\neq\emptyset$). Another type of factorization,
+\begin{align}\label{eq:conditional-mf}
+	p_\phi(\mathbf{x}\mid\mathbf{y}) &= \frac{1}{Z(\mathbf{y})}\prod_{n=1}^{N'}\psi_n(\mathbf{x}_n,\mathbf{y})
+\end{align}
+where $\mathbf{x}_n$ is an arbitrary subset of $\mathbf{x}$, expresses $p_\phi$ as a product of $N'$ unnormalized factors, $\psi_n$ (with $N'\neq N$ in general) whose normalization constant is,
+\begin{align}
+	Z(\mathbf{y}) &= \int_\mathcal{X}\prod_n\psi_n(\mathbf{x}_n,\mathbf{y})d\mathbf{x}.
+\end{align}
+This type of factorization is known as a \emph{conditional random field} (CRF) when $\mathbf{y}\neq\emptyset$ and a \emph{Markov random field} (MRF), otherwise.
+
+The theory of probabilistic graphical models (PGMs) \citep{KollerFriedman2009} can be used to associate a graph with these two types of factorizations, and from that read off conditional independence relationships that hold in any distribution factoring according to these graphical structures. For instance, in a Bayesian network, (using the notation of \eqref{eq:factorization}) we can associate a directed acyclic graph with an edge $x_n\leftarrow z$ if and only if $z\in\mathbf{x}'_n$ or $z\in\mathbf{y}$. The conditional independence relationships,
+\begin{align*}
+	x_n\perp\text{\scshape NonDescendants}_\mathcal{G}(x_n)\mid\text{\scshape Parents}_\mathcal{G}(x_n),\ \ \ n=1,2,\ldots,N,
+\end{align*}
+hold in any distribution factoring over the same BN structure, $\mathcal{G}$. In fact, there are many more conditional independence relationships one can read off the graph using the concept of \emph{d-separation} (see \citep{KollerFriedman2009} and \citep[A.1]{WebbEtAl2018}). Conversely, any distribution that satisfies these conditional independence relationships must factor according to the BN structure. Thus, due to this equivalency, one can think of the graph as a compact structure for representing the dependency structure of the distribution.
+
+%\subsubsection{Importance of the factorization}
+{\bfseries Importance of the factorization.} Let us restrict our attention to BNs and consider the importance of the factorization of our representation. If the factorization chosen for $p_\phi$ implies conditional independence relationships that do not hold in the target distribution, $p^*$, then it is not possible that $p_\phi(\mathbf{x}|\mathbf{y})=p^*(\mathbf{x}\mid\mathbf{y})$ for any choice of the factors, even when each factor is a universal distribution estimator, i.e., is able to arbitrarily closely approximate any conditional distribution over the domain of its inputs. This occurs, roughly speaking, when the graphical structure is missing edges. In the context of amortized VI, if the factorization chosen for the inference network, $q_\psi(\cdot|\mathbf{x})$, makes conditional assumptions that do not hold in the true posterior, $p_\phi(\cdot|\mathbf{x})$, then it is likely that $\text{KL}\infdivx{q_\psi(\mathbf{z}|\mathbf{x})}{p_\phi(\mathbf{z}|\mathbf{x})}$ cannot be small, even holding $\phi$ fixed and performing multiple SGD steps on the {\scshape ELBo} for $\psi$. We say that the inference network is \emph{faithful} to the posterior when its corresponding BN structure does not mislead us about the conditional independence assumptions made by the posterior. An unfaithful inference network results in not just poor inference amortization, but also poor model learning, as $q_\psi(\mathbf{z}|\mathbf{x})$ is used to estimate the gradient of the {\scshape ELBo} for the model parameters, $\phi$.
+
+Thus, a poorly chosen structure for our inference network biases and increases the variance of model learning and inference amortization. Existing practice is to design this structure heuristically, typically from inverting the edges from the generative model. Unfortunately, this does not in general produce a faithful structure. This motivates our development of the NaMI algorithm in Ch 5 \citep{WebbEtAl2018}, which inputs a BN graphical structure for the generative model and outputs a provably faithful BN structure for the true posterior. The algorithm can be trivially generalized to operate on MRFs and factor graphs. The output is not only faithful, but \emph{minimally faithful}, in the sense that the removal of even a single edge from the output renders it unfaithful to the posterior. We demonstrate experimental gains in model learning and inference amortization by using a faithful over an unfaithful inverse, and, perhaps surprisingly, using a minimally faithful over a non-minimally faithful inverse.
+
+As an aside, let us mention the importance of the factorization for modeling. The factorization chosen expresses the assumptions made on the relationships between the variables of the model. We can use this to encode our prior knowledge of which variables directly effect which others, this being often more clearly justified than any prior assumptions on the explicit functional form of the relationships between variables.
+
+%It is important to describe the relationships accurately so that probabilistic influence, or information, can ``flow'' between variables that do effect others, and is blocked between variables that do not effect each other, possibly conditioning on some intervening variables in the model.
+
+%On the inference side, the factorization in the inference network should be chosen to reflect the structure of the true posterior when learning with a method such as amortized SVI. Without the correct structure, our approximating family will be a poor fit for the posterior, which will bias and increase the variance of model learning and inference. We explain in Ch 6 how to determine a suitable factorization for the inference network that is faithful to the posterior with the NaMI algorithm \citep{WebbEtAl2018}
+
+{\bfseries Importance of the parametrization.} Having considered the importance of the factorization, let us now consider the importance of the parametrization. The first step in producing a flexible family of representations for a target is to ensure the factorization is adequate. Nonetheless, even with an adequate factorization, if each factor is restricted in its representational power it is likely that there does not exist a $\phi\in\Phi$ for which $p_\phi(\mathbf{x}|\mathbf{y})=p^*(\mathbf{x}\mid\mathbf{y})$ approximately holds. In the context of amortized VI, we note that having factors with simple parametric forms like the Gaussian or Bernoulli distribution in the generative model does not imply that those factors for the corresponding variables in the posterior are adequately approximated by the same parametric forms. NNs, being powerful function approximators, are crucial for constructing the flexible parametrizations required for effective amortized VI. Also, in both inference networks and modeling, NNs can be used to learn lower-dimensional distributed representations of, e.g., perceptual inputs such as images and text. Operating at a higher level of abstraction, these learnt embeddings are more effective for expressing the relationships between variables.
+
+%We require methods for constructing flexible distributions.
+
+An ideal parametrization would have tractable scoring, that is, calculation of $\ln(p_\phi(\mathbf{x}\mid\mathbf{y}))$, as well as tractable sampling, in addition to both operations being numerically stable. Tractability in this instance is taken to mean that the running cost of these operations is $O(1)$ rather than, say, $O(N)$, and that the constant factor is not prohibitively large. Typically, $O(N)$ complexity is not considered intractable in computer science. However, in our context it is, since we are often working at the limits of our computational resources. For example, consider training a VAE model with the standard independent Gaussian inference network, which has $O(1)$ computational complexity for sampling. Suppose that training takes 12 hours. Compare this to, for example, training with a fully-connected Gaussian inference network parametrized by MADE, which has $O(N)$ computation complexity for sampling. Controlling the architectures, the constant factor is roughly equal, so that training would take over a year if we assume the dataset is MNIST, with $N=784$!
+
+An ideal parametrization would also be able to represent a wide class of distributions for a given $\mathcal{X}$ and $\mathcal{Y}$, that is, it would be a \emph{universal density estimator} (in the case of continuous variables). Let us define this concept more precisely. A universal density estimator is a family of densities $\{p_\phi(\cdot|\mathbf{y})\mid \phi\in\Phi\}$ for which for every $\epsilon>0$ and multivariate continuously differentiable CDF, $F(\mathbf{x}|\mathbf{y})$, there exists a member $\phi^*\in\Phi$, such that $|F(\mathbf{x}|\mathbf{y})-F_{p_{\phi^*}}(\mathbf{x}|\mathbf{y})|<\epsilon$ for all $\mathbf{x}\in\mathcal{X}$, $\mathbf{y}\in\mathcal{Y}$. The dimensionality of the particular $\phi^*$ must clearly increase as $\epsilon$ decreases.
+
+In practice, however, we must trade off between these objectives, as we now discuss. The remainder of this section describes the technical details of several methods for constructing NN density estimators.
+
+%In classical VI, the parametrizations are simple parametric forms chosen primarily to satisfy conjugacy relationships and derive closed form updates. Modern VI, in contrast, relaxes this requirement and permits parametrization with arbitrary functions. Our prior knowledge is much more often contained in knowledge of the relationships between our model variables which is expressed in the factorization. It is advantageous then to make weaker prior assumptions on the parametrization by using flexible NN distribution estimators whose parameters are learnt from big data. Such NN distribution estimators also permit us to learn representations from perceptual data like images \citep{RezendeEtAl2014, KingmaWelling2013} or text \citep{BowmanEtAl2015} with the full toolkit of deep learning.
+
+%On the inference side, flexible parametrizations, in combination with a faithful factorization, allow us to represent a family of distributions that is likely to contain members close to the true posterior. Recovering this member results in low bias/variance learning and inference. When the model is fixed and uses simple parametric forms, such as is the case of many classical Bayesian models like Bayesian linear regression, it is still important to use flexible NN density estimators in the inference network---even if the factors in the generative model are simple, this does not entail that the factors in the true posterior can be closely approximated by simple factors. In this case, unlimited data can be sampled from the model and used to train the inference network \citep{PaigeWood2016, LeEtAl2016}.
+
+%This chapter gives a selective survey of methods for parametrizing distributions using neural networks.
+
+%As explained in the previous chapter, variational inference requires the presupposition of a family of approximations to the posterior, a member of which is chosen by an optimization procedure. Neural networks, as universal function approximators, seem, therefore, to o
+
+%\hl{On the modeling side, with the availability of more data we can loosen our strong assumptions about the form that the model factors take and specify more flexible, expressive ... Give example about structured VAE paper!}
+
+
+%\todo[inline]{TR: You need more context here (a proper intro at the start of the chapter would help).  I would also
+%	suggest you talk in terms of a posterior approximation $q$, rather than model learning.  At the moment you will
+%	induce confusions like "but surely the posterior is intractable".}
+
+\subsection{Univariate factors}
+\label{sec:univariate-factors}
+Let us consider a univariate target distribution, $p^*(x)$. The simplest construction of a distribution representation for this case, consists of a univariate parametric form with deterministic parameters. For example, if $\mathcal{X}=\mathbb{R}$, one could use the normal density, $p_\phi(x)=\mathcal{N}(x\mid\mu,\sigma)$, with learnable parameters $\phi\triangleq(\mu,\sigma)$. If $\mathcal{X}=\{1,2,\ldots,D\}$, one could use a categorical distribution, $p_\phi(x)=\prod^D_{d=1}\phi_d^{\mathbbm{1}_{\{x=d\}}}$, with $\sum_d\phi_d=1$ and $0\le\phi_d\le1$.
+
+Sampling is trivial for common parametric univariate distributions, and is typically based on either inverse transform sampling (e.g., the exponential distribution), a transformation from another distribution with simpler sampling (e.g. the Box--Muller algorithm \citep{Box1958} for sampling from a bivariate normal distribution), of which inverse transform sampling is a specific case, or rejection sampling with a cleverly constructed proposal (e.g., sampling from a Gamma distribution by the method of \citet{MarsagliaTsang2000}).
+
+When there are variables, $\mathbf{y}\neq\emptyset$, to condition on, this method can be extended with the use of NNs. We first suppose a family of parametric forms for $\mathbf{x}$ and set $\phi=f_\theta(\mathbf{y})$ for a neural network $f_\theta$. For example, for $\mathcal{X}=\mathbb{R}$, we could use $p_\phi(x\mid\mathbf{y})=\mathcal{N}(x\mid\mu_\theta(\mathbf{y}),\sigma_\theta(\mathbf{y}))$, where the neural network outputs the parameters to the normal distribution, $f_\theta(\mathbf{y})=(\mu_\theta(\mathbf{y}),\sigma_\theta(\mathbf{y}))$.
+
+Sampling is no more difficult than the non-conditional case---one simply calculates the parameters to the distribution using the neural network and the value of the conditioned variables and then samples from the parametric form using the standard techniques.
+
+As many neural networks are universal function approximators given sufficient capacity, this allows a great flexibility in how the variables to condition on, $\mathbf{y}$, influence the distribution of $\mathbf{x}$. One should think of the networks as learning a representation of $\mathbf{y}$, and should use deep learning practice to guide their design. For instance, if $\mathbf{y}$ is an image, it seems sensible to use a standard CNN architecture for image classification in regressing $\mathbf{y}$ onto $\phi$.
+
+Nonetheless, we are still greatly constraining the representational power by using a simple form for $x$. In our running example of a normally distributed family, $p_\phi(x\mid\mathbf{y})$ cannot be heavy-tailed or multimodal, always having the simple bell-shape of a normal distribution. More importantly, most interesting distributions are multivariate, $N>1$, and we thus desire representations for this case.
+
+\subsection{Autoregressive representations}
+In many deep generative models, there is a vector of latent variables $\mathbf{z}$ that are independent in the prior, $p(\mathbf{z})=\prod_m p(z_m)$. This is the case in the VAE model. However, for the inference network to be faithful, they must typically be completely dependent. Thus for effective amortized VI, we require NN distribution representations for multivariate distributions. 
+
+Now let us consider representing a multivariate distribution over $p_\phi(\mathbf{x}\mid\mathbf{y})$ for $N>1$. By the chain rule of probability,
+\begin{align}\label{eq:autoregressive-distribution}
+	p_\phi(\mathbf{x}\mid\mathbf{y}) &= \prod^N_{n=1}p_{\phi_n}(x_n\mid\mathbf{x}_{\prec n},\mathbf{y}),
+\end{align}
+where $\mathbf{x}_{\prec n}\triangleq\{x_1,\ldots,x_{n-1}\}$. 
+
+One approach would be to apply the approach of \S\ref{sec:univariate-factors} to each univariate factor, $p_n$. This would require $N$ separate neural networks, $f_{\theta_n}(\mathbf{x}_{\prec n},\mathbf{y})$, to compute the parameters for the parametric form of each variable, $x_n$. It would seem advantageous if we could somehow share learning across these neural networks---from an optimization point of view, weight sharing reduces the variance in the gradients during learning.
+
+An autoregressive neural network is one such approach. It is defined as a neural network, $f_\theta(\mathbf{x},\mathbf{y})$, that outputs a vector $\phi=(\phi_1,\phi_2,\ldots,\phi_N)$, where the $n$th element of the output, $\phi_n$, only depends on the previous inputs, $\mathbf{x}_{\prec n}$, and conditioned variables, $\mathbf{y}$. The output of an autoregressive network can be used as the parameters for $N$ simple parametric factors.
+
+We discuss several types of autoregressive neural networks in this section. They will also be used in \ref{sec:normalizing-flows} to define invertible transformations of simple random variables in order to produce richer distributions.
+
+%also an important component of autoregressive normalizing flows. Unlike normalizing flows, autoregressive density estimators can be used for discrete valued random variables.
+
+%\subsubsection{Masked autoencoder for density estimation}\label{sec:made}
+{\bfseries Masked autoencoder for density estimation.} The masked autoencoder for density estimation (MADE) \citep{GermainEtAl2015} is a densely connected feedforward network that cleverly masks the weights of the network so that the $n$th output, $f_n$, is a function only of the previous inputs, $\mathbf{x}_{\prec n}$. Let us make this more concrete.
+
+Suppose our factors take scalar parameters, $\phi_n\in\mathbb{R}$, and consider a dense feedforward network with a single hidden layer with $H$ units,
+\begin{align*}
+	\mathbf{h} &= f\left(U\begin{pmatrix}\mathbf{y}\\\mathbf{x}\end{pmatrix} + \mathbf{b}\right)\\
+	\phi &= V\mathbf{h}+c,
+\end{align*}
+where $U\sim H\times(N+M)$, $\mathbf{b}\sim H$, $V\sim N\times H$, $c\sim N$, and $f$ is a non-linearity such as ReLU.
+
+%It is helpful to visualize the network by tracing a path from $\phi_n$ back to the active inputs. Assuming the weights are all initialized with the standard Xavier scheme \citep{glorot2010understanding}, none are zero almost surely, and all paths from $\phi_n$ back to all inputs, $(\mathbf{y},\mathbf{x})$ are active.
+
+The idea of MADE is to multiply $U$ and $V$ elementwise by binary-valued masking matrices $B$ and $C$, respectively, such that the connections are pruned in exactly the right way to make the network satisfy the autoregressive property,
+\begin{align*}
+	\mathbf{h} &= f\left((B\otimes U)\begin{pmatrix}\mathbf{y}\\\mathbf{x}\end{pmatrix} + \mathbf{b}\right)\\
+	\phi &= (C\otimes V)\mathbf{h}+c.
+\end{align*}
+The construction of the masking matrices is as follows. Indices are associated with each element of the input vector, the hidden units, and the output vector. The input vector, $(\mathbf{y},\mathbf{x})$, is associated with the ``input indices,'' $\mathbf{m}^{(x)}\triangleq(\mathbf{0}_M,1,2,\ldots,N)^T$. The hidden units, $\mathbf{h}$, are associated with the ``hidden indices,'' $\mathbf{m}^{(h)}$, by producing a sequence of $H$ linearly spaced numbers from $1$ to $N$ and rounding to nearest integer. The outputs, $\phi$, are associated with the ``output indices,'' $\mathbf{m}^{(\phi)}\triangleq(1,2,\ldots,N)^T$.
+
+We set,
+\begin{align*}
+	B_{ij} &= \begin{cases}
+							1, & m^{(x)}_j<m^{(h)}_i\\
+							0, & \text{otherwise}
+            \end{cases}\\
+	C_{ij} &= \begin{cases}
+							1, & m^{(h)}_j\le m^{(\phi)}_i\\
+							0, & \text{otherwise}
+            \end{cases}.
+\end{align*}
+Now, why does this construction satisfy the autoregressive property? It is helpful to imagine the active connections tracing a path backwards from a given output, $\phi_k$, to the inputs. The output $\phi_k$ is connected to all hidden units with index less than or equal to $k$. The hidden units with index $k$ are connected to inputs with index $k-1$ or lower, the hidden units with index $k-1$ are connected to inputs with index $k-2$ or lower, and so on. So in total, $\phi_k$ is connected to inputs with index $k-1$ or lower. But by construction, these are exactly $(\mathbf{x}_{\prec k},\mathbf{y})$, and so the network is autoregressive.
+
+This simple presentation is easily extended to the more general case. When there are multiple parameters for each factor, e.g. $\phi_k\in\mathbb{R}^2$, we can make the output of the autoregressive network a longer vector that is reshaped, modifying the masking matrix appropriately. Restrictions on the valid range of $\phi_k$ can be enforced by applying an output activation function,
+\begin{align*}
+	\phi &= g((C\otimes V)\mathbf{h}+c).
+\end{align*}
+The feedforward network can be extended to have multiple hidden layers by introducing additional masking matrices with the same construction, and it has been found advantageous to introduce skip connections between the inputs and outputs \citep{PaigeWood2016}, requiring an additional masking matrix.
+
+Sampling $\mathbf{x}$ now requires $N$ passes of the network as follows. Note that $\phi_1$ only depends on $\mathbf{y}$. Thus a single pass through the network with any value for the $\mathbf{x}$ reveals $\phi_1$. Using this we sample $x_1\sim p_{\phi_1}(\cdot)$. Next, another pass through the network with our sampled value for $x_1$ and any value for $x_2,\ldots,x_N$ reveals $\phi_2$. Using this we can sample $x_2$ and so on until the entire $\mathbf{x}$ has been sampled.
+
+One trick to make this procedure easily implementable is to fix the random noise vector used to sample $\mathbf{x}$. For instance, if $\mathbf{x}=\mu+\sigma\mathbf{z}$, where $\phi=(\mu,\sigma)$, and $\mathbf{z}\sim\mathcal{N}(\mathbf{0}_N,\mathbf{1}_N)$, we can use the same $\mathbf{z}$ at each iteration of the sampling procedure, and sample the entire $\mathbf{x}$ at each step. The sample, $\mathbf{x}$, should not change beyond $N$ iterations, a simple sanity check that the algorithm has been implemented correctly.
+
+The MADE model is capable of representing fully-connected multivariate distributions where each variable's conditional distribution has a simple parametric form, sharing parameters between the factors corresponding to each variable. However, it is limited by the simple form for each factor and in that sampling is not a tractable operation, having complexity $O(N)$. On the other hand, the density can be calculated with a single forward pass of the NN, resulting in $O(1)$ scoring.
+
+{\bfseries Recurrent neural networks} There are scenarios where we would like to model distributions with varying dimensionality. For instance, one possible faithful inference network structure for a hidden Markov model (HMM) structured generative model contains factors, $q_\psi(z_t\mid z_{t-1},x_{\succ t})$, where $x_{\succ t}=\{x_{t+1},x_{t+2},\ldots,x_T\}$ (see \citet{KrishnanEtAl2017}). We would like to share the weights of the inference network over time steps, $t$, and hence require a function that is function of the variably lengthed $\{x_{\succ t}\}$. Recurrent neural networks (RNNs) \citep{rumelhart1986learning, graves2012supervised} are one such choice to design these types of inference networks.
+
+A RNN is a NN that is designed to operate on a (possibly) variable-length sequence. In our case, the sequence will be the elements of the input, $\{x_1,x_2,\ldots,x_N\}$. The RNN defines a hidden state, $\mathbf{h}^{(n)}\sim H$ for each position in the sequence, containing a representation of the sequence seen thus far.
+
+The hidden state is calculated as the output of a transition function,
+\begin{align}\label{eqn:rnn-transition}
+	\mathbf{h}^{(n)} &= f_\theta(\mathbf{h}^{(n-1)},x_n,\mathbf{y}),\ \ n=1,\ldots,N-1,
+\end{align}
+that learns to update the current representation based on the one of the previous time-step, the input at current time-step, and, in our case, the variables $\mathbf{y}$ that the distribution conditions upon.
+
+The transition function is typically a shallow dense feedforward network, such as,
+\begin{align*}
+	f_\theta(\mathbf{h}^{(n-1)},x_n,\mathbf{y}) &\triangleq \tanh\left(U\mathbf{h}^{(n-1)} + V\begin{pmatrix}x_n\\ \mathbf{y}\end{pmatrix} + \mathbf{b} \right).
+\end{align*}
+where $\theta=\left\{U,V,\mathbf{b}\right\}$ are learnable parameters.
+
+The hidden state, $\mathbf{h}^{(n)}$ is directly a function of $x_n$, and indirectly a function of $\mathbf{x}_{\prec n}$ via $\mathbf{h}^{(n-1)}$. Therefore, we can define the parameters,
+\begin{align*}
+	\phi_n &\triangleq g_\theta(W\mathbf{h}^{(n-1)}+\mathbf{c}),\ \ n=1,\ldots,N,
+\end{align*}
+and use $\phi_n$ to parametrize the factor $p_n$ of \eqref{eq:autoregressive-distribution}, safe in the knowledge that $\phi_n$ depends only on $(\mathbf{x}_{\prec n},\mathbf{y})$.
+
+The initial hidden state, $\mathbf{h}^{(0)}$ is typically set to zero or made a learnable parameter. In our case, however, we require it to be a function of $\mathbf{y}$ and none of the input variables. For this we could define an ``initialization function,''
+\begin{align*}
+	\mathbf{h}^{(0)} &\triangleq \tanh\left(V'\mathbf{y} + \mathbf{b}\right).
+\end{align*}
+We thus see that the RNN accomplishes representation learning of variable-length sequences by sharing weights across time-steps, and can be interpreted as an autoregressive NN that can be used to represent joint distributions.
+
+The simple RNN transition function of \eqref{eqn:rnn-transition} suffers from the ``vanishing gradient problem'' \citep{PascanuEtAl2013} for longer sequences, where the gradient signal diminishes to a degree that learning long-term dependencies is infeasible. Gating RNNs such as the LSTM \citep{HochreiterSchmidhuber1997, GersEtAl2000, GersSchmidhuber2000, GravesSchmidhuber2005} and GRU \citep{ChoEtAl2014, ChungEtAl2014, ChungEtAl2015} effectively solve this issue, and are widely used in practice.
+
+RNNs have been used to parametrize inference networks for sequential models where length of the sequence is not fixed \citep{eslami2016attend, KrishnanEtAl2017}. This is their main advantage, working on variable-length sequences, as both sampling and scoring are operations with undesirable $O(N)$ complexity.
+
+In recent developments, ``recurrent'' NNs making use of convolutional operators have been developed \citep{bradbury2016quasi, VanDenOordEtAl2016c, Kalchbrenner2016c, VanDenOordEtAl2016b} and shown to have comparable performance to standard RNNs while offering improved parallelization (for scoring but not sampling).
+
+\subsection{Mixture models}
+Many modeling situations naturally call for representing multi-modal distributions. For instance, a distribution over word embeddings would likely need to be multi-modal to represent our uncertainty over the particular meaning of a word being used given its context. Mixture models \citep{Bishop1994} are a simple means of constructing multi-modal distributions from simpler ones.
+
+Suppose a family of distributions, $\mathcal{P}=\{p_\phi(\mathbf{x}\mid\mathbf{y})\mid\phi\in\Phi\}$. A mixture model with $K$ components is a convex combination of distributions,
+\begin{align*}
+	p_\phi(\mathbf{x}\mid\mathbf{y}) &= \sum^K_{k=1}\alpha_k p_{\phi_k}(\mathbf{x}\mid\mathbf{y})
+\end{align*}
+where $p_{\phi_k}\in\mathcal{P}$ and the mixture weights, $\sum^K_{k=1}\alpha_k=1$. This is clearly still a valid distribution---it corresponds to the marginal of $p_\phi(\mathbf{x},k\mid\mathbf{y})\triangleq p_{\phi_k}(\mathbf{x}\mid\mathbf{y})p(k)$ over $k$.
+
+To sample from a mixture model, we first sample a component index
+\begin{align*}
+k'\sim\text{Categorical}(\alpha_1,\alpha_2,\ldots,\alpha_K)
+\end{align*}
+with probabilities given by the mixture weights, then sample from the corresponding component, $p_{\phi_k}$.
+
+Whether sampling and scoring is tractable for the mixture model distribution in whole depends on the tractability for each mixture component. In particular, if both are tractable for all components then they are tractable for the the mixture model. This can be used to construct more complex distribution representations from any of the tools outlaid in this chapter, preserving their properties of tractability. For instance, \citet{PaigeWood2016} construct a multi-modal proposal for importance sampling as a mixture of MADE networks.
+
+A limitation of mixture models is that we must fix the maximum nodes in advance, which may result in components being unused if $K$ is too large for the data, or an inadequate fit if $K$ is too small. It would be preferable if our representation adapted its number of modes during learning. Moreover, for a fixed $K$, the flexibility of a mixture model depends on the flexibility of each component, $p_{\phi_k}$, which means the concept has not solved the central challenge of this chapter.
+
+\subsection{Normalizing flows}\label{sec:normalizing-flows}
+So far we have described representations that use a simple parametric form for each factor $p(x_n|x_{\prec n},\mathbf{y})$, or a mixture of these. An arbitrary continuous distribution, however, can possess a much more complex functional form, and we would indeed expect it to---even though the model may be expressed with simple parametric forms, this does not entail that the true posterior under a given factorization comprises the same parametric forms.
+
+Normalizing flows provide one avenue to produce more complex representations. Often it is convenient to represent the sampling process of some distribution as a transformation of a simpler one \citep{tabak2013family, RezendeMohamed2015}. For instance, if $U\sim\text{Unif}(0,1)$, then $W=\lambda(-\ln(U))^{1/k}\sim\text{Weibull}(k,\lambda)$. To sample from $W$ we simply sample $u$ from $U$ and evaluate $W$ with $U=u$. Normalizing flows extend this concept by making the transformation a learnable function, $g_\theta$, typically over vector-valued random variables. Given a simple source of randomness such as a draw $Z\sim N(\mathbf{0},I)$ from the standard multivariate normal distribution, one samples from the more complex distribution $\mathbf{x}\sim p(\cdot\mid\mathbf{y})$ as $\mathbf{x}=g_\theta(\mathbf{z}; \mathbf{y})$.
+
+How does the density $p_X(\mathbf{x}\mid\mathbf{y})$ relate to the density $p_Z(\mathbf{z})$? When $g$ is a bijective, differentiable function in $\mathbf{z}$, we can apply a multivariate change-of-variables,
+\begin{align*}
+	p_X(\mathbf{x}\mid\mathbf{y}) &= \left|\text{det}\left(\frac{d\mathbf{z}}{d\mathbf{x}}\right)\right|p_Z(\mathbf{z})\\
+	&= \left|\text{det}\left(\frac{d\mathbf{x}}{d\mathbf{z}}\right)\right|^{-1}p_Z(\mathbf{z}),
+\end{align*}
+where $d\mathbf{z}/d\mathbf{x}$ denotes the Jacobian $J$ with $J_{ij}\triangleq\partial g_i/\partial x_j$ (and similarly for $d\mathbf{x}/d\mathbf{z}$), and the last line follows by the inverse function theorem. In log-space this is,
+\begin{align*}
+	\ln(p_X(\mathbf{x}\mid\mathbf{y})) &= \ln(p_Z(\mathbf{z})) - \ln\left(\left|\text{det}\left(\frac{d\mathbf{x}}{d\mathbf{z}}\right)\right|\right).
+\end{align*}
+Provided we can easily calculate the determinant of the Jacobian, the transformed variable is easy to score. Research in normalizing flows aims to construct powerful bijective and differentiable transforms for which this holds.
+
+There are several strategies used for constructing bijections with tractable $\text{det}(J)$. Firstly, it is possible to calculate $\text{det}(J)$ without explicitly using Laplace's formula or performing an expensive matrix decomposition in some restricted cases \citep{RezendeMohamed2015,van2018sylvester}. Another strategy is to construct volume-preserving bijections, for which $\text{det}(J)=\pm1$ \citep{dinh2014nice, tomczak2016improving}. Yet another strategy is to construct the transformation so that $J$ is a triangular matrix and thus $\text{det}(J)$ the product of the diagonal \citep{KingmaEtAl2016, papamakarios2017masked, huang2018neural}. In recent work, the issue of calculating $\text{det}(J)$ is sidestepped by making the transformation and its inverse the (numerical) solution to an ordinary differential equation \citep{chen2018neural}.
+
+Layers of normalizing flows can be cascaded to produce more powerful transformations. Suppose we have L bijective continuous transforms applied in sequence,
+\begin{align*}
+	\mathbf{z}_L &= g_{\theta_L}\circ g_{\theta_{L-1}}\circ\cdots\circ g_{\theta_1}(\mathbf{z}_0)
+\end{align*}
+where $\circ$ denotes function composition, $\mathbf{z}_0$ is the base noise, and $\mathbf{z}_L=\mathbf{x}$ the output. By applying the change-of-variables recursively,
+\begin{align*}
+	\ln(p_X(\mathbf{x}\mid\mathbf{y})) &= \ln(p_Z(\mathbf{z}_0)) - \sum^L_{l=1}\ln\left(\left|\text{det}\left(\frac{d\mathbf{z}_l}{d\mathbf{z}_{l-1}}\right)\right|\right).
+\end{align*}
+This comes at the expense of more challenging optimization due to a deeper architecture and more parameters. Provided the reparametrization trick (explained in Section \ref{sec:modern-vi}, ``Pathwise estimators'') is applicable to the base distribution, it is easy to produce reparametrization gradients for a normalizing flow using the chain-rule (which is taken care of by automatic differentiation). Note that we will use the term ``normalizing flow'' to denote both the distribution resulting from applying a single or cascade of bijective transformations to samples from a base distribution, as well as the transformations themselves (which will be clear from the context).
+
+Normalizing flows with $L$ discrete layers are referred to as finite flows. As the number of layers approaches infinity, we have an infinitesimal, or continuous, flow, for which the flow dynamics is described by an ordinary differential equation,
+\begin{align*}
+	\frac{\partial}{\partial t}\mathbf{z}_t &= g_\theta(\mathbf{z}_t).
+\end{align*}
+
+When a normalizing flow is used to parametrize an inference network for amortized variational inference, it is not a requirement of most schemes that scoring of arbitrary samples, which requires inverting the flow, is a well-defined operation. For instance, the {\scshape ELBo} (Ch 2.2) minimizes $\text{KL}\left\{q(\mathbf{z}|\mathbf{x})||p(\mathbf{z}|\mathbf{x})\right\}$ up to a constant. This only requires tractable sampling and scoring these samples, that is, calculate $\ln q(\mathbf{z}\mid\mathbf{x})$ for $\mathbf{z}\sim q(\cdot\mid\mathbf{x})$. Even if the inverse of the flow transformation is undefined, numerically unstable, or computationally expensive, we can cache the inputs $\mathbf{z}_0$ that gave rise to each $\mathbf{x}=\mathbf{z}_L$, and use this to calculate $p_Z(\mathbf{z})$. It is even possible in many cases to calculate and cache $\ln(|\det(\frac{\partial z}{\partial z'})|)$ during sampling.
+
+On the other hand, if the normalizing flow is used for density estimation of $p(\cdot)$ by $q_\theta(\cdot)$ and the objective is, e.g., the negative log-likelihood, or $\text{KL}\left\{p(\mathbf{x})||q(\mathbf{x})\right\}$ up to a constant, then we require to be able to draw samples from the target $p(\cdot)$, and that scoring of arbitrary samples be tractable on the distribution estimator $q_\theta(\cdot)$. Moreover, sampling from $q_\theta(\cdot)$ is not required for learning (although it may be required for a downstream task like using $q_\theta$ as a proposal for importance sampling \citep{PaigeWood2016}). Thus we see that the direction of the KL-divergence in the objective used to match distributions effects the requirements we place on the forward and inverse operations of the normalizing flow used.
+
+There are two means of representing a conditional distribution, $p(\mathbf{x}\mid\mathbf{y})$, with normalizing flow. Firstly, we can simply make each layer of flow's transformation, $g^{(l)}_\theta$ take $\mathbf{y}$ as an input. An alternative strategy is to make the first layer take $\mathbf{y}$ as an input, modify the transformations so that $g^{(l)}_\theta=(\mathbf{z}_l,\mathbf{h}_l)$, each layer outputs additionally a ``hidden state,'' $\mathbf{h}_l$, and feed this into subsequent layers after the $0$th one. %\hl{Illustration!}
+
+\subsection{Discussion}
+In this section, we have drawn a distinction between a distribution's factorization and parametrization, and have focused on the latter, describing how NNs can be used to construct representations, both for inference and modeling purposes. In the following chapter, we focus on the factorization aspect of distribution representation, and describe a novel algorithm for constructing optimal factorizations for inference networks with respect to a generative model. When combined with the NN distribution representations presented in this section, such inference networks can be used by amortized VI to perform effective scalable and generic Bayesian inference.

@@ -1,0 +1,157 @@
+\chapter{Introduction}
+\label{chp:intro}
+
+Bayesian statistics \citep{gelman2013bayesian, Ghahramani2015} is a powerful framework for modeling the world and reasoning over uncertainty. Its central thesis is that the world can be understood through appropriately chosen probabilistic models, with parameters and variables inferred or learnt through data. Moreover, it provides a principled method for representing our prior knowledge, and updating that knowledge in the light of new information. Traditional Bayesian statistics, however, has been limited to simple models, frequently employing conjugacy assumptions in the distribution of the model to make inference tractable. Two of the main limiting factors for this are the lack of flexibility in the probability distributions used, and the computational restrictions in performing inference and model learning. In this thesis, we consider how neural networks (NNs) can be used to assist with both of these problems. In particular, we will look at how NNs can assist in the inference process and how we can perform inference over flexible NN models.
+
+NNs are helpful for Bayesian inference in generative models. Variational inference (VI) is a family of inference algorithms widely used in Bayesian modeling whose distinguishing feature is reframing inference as an optimization problem. The success of VI methods depend on having a flexible family of distributions to approximate the posterior. NN density estimators can be effectively utilized to construct the required flexible distribution families. For instance, take the example of normalizing flows \citep{RezendeMohamed2015}, a class of methods for NN distribution parametrization, that transforms a simple Gaussian noise source into a more complex distribution by the application of learnable bijections with tractable Jacobians. Such parametrizations have been shown to improve inference in variational autoencoders \citep{KingmaEtAl2016}.
+
+%Variational inference is a promising means to scale Bayesian inference.
+
+Conversely, inference is useful for flexible model learning in NNs. Typically the conditional distributions comprising a Bayesian model are simple distributions with parametric forms. Amortized VI (to be explained in Ch 2), however, enables model learning of models with arbitrary distributions, using inference to estimate the update to the model parameters. In this way, we can include model terms that, for example, use NNs to regress the values of a variable's parents to the parameters of its conditional distribution. For instance, in the variational autoencoder (VAE) \citep{KingmaWelling2013}, a NN is used in the model to learn how to decode the latent variable to the parameters of the distribution over images.
+
+More broadly, inference is useful for analyzing NN models. Take the example of ``Bayesian NNs,'' which provide a bridge between discriminative and generative models, and are formed from standard NN architectures by placing a prior distribution over the model parameters. Learning is reformulated as inference over the posterior of the parameters and, subsequently, one can thus represent and reason over our uncertainty about the NN model's outputs using this posterior. Another type of uncertainty is encountered during distributed learning of NNs, for which the worker nodes have incomplete and potentially out-of-date information on the progress of their fellow workers. As we will show in Ch 4, inference can be used to quantify this uncertainty and improve the robustness of distributed learning in NN models to stale gradients.
+
+\section{Overview}
+The increased flexibility in modeling and inference comes at the price of challenges in inference and representation. In this section, we give an outline of the remainder of the thesis, and connect how it relates to tackling these challenges.
+
+In Ch 2, we provide the context for our work by giving a high-level overview of Bayesian modeling, inference, and representation. We first delineate discriminative and generative probabilistic models, and the importance of latent variable generative models for Bayesian inference. Probabilistic models differ in whether they model joint or conditional distributions, and in whether they contain latent variables. Deep learning is based, primarily, on discriminative models that are formed from conditional distributions where all variables are observed, and is well suited to scenarios that have masses of training data and little prior knowledge. Bayesian modeling, on the other hand, is based on models that are typically generative, or rather, based on joint distributions, and contain latent (unobserved) variables, whose value we must infer. These models are better suited for scenarios where we would like to use our prior knowledge to learn efficiently when big data is lacking. Generative models are required for more advanced tasks beyond classification and regression, such as anomaly detection, learning concepts, causal discovery, and disentangling factors of variation in our data. They allow us to learn from incomplete data, in an unsupervised or semi-supervised fashion, in contrast to fully-observed discriminative models.
+
+We next explain three different types of inference methods---Markov chain Monte Carlo (MCMC) inference, variational inference (VI), and expectation propagation (EP)---and how each is suited for different problems. MCMC inference is based on constructing a Markov chain that converges to the target distribution, typically, the posterior \citep{andrieu2003introduction}. By simulating the Markov chain, one can draw approximate samples from the posterior for Bayesian inference, with time complexity that is of polynomial order in the dimension of the distribution, an advantage over other inference methods. Despite having relatively well-understood theoretical properties, the performance of MCMC is often tricky to characterize in practice, such as determining when the chains have approximately converged to the target distribution. Variational inference (VI) is another class of inference methods, which reframes inference as an optimization problem, learning an approximation to the posterior by minimizing the KL-divergence between it and the posterior \citep{jordan1999introduction}. Relative to MCMC, the theoretical properties of VI are not well understood. Despite this, it converges more quickly in practice than MCMC methods, and scales to large data \citep{HoffmanEtAl2013}. EP is a type of variational inference (in the broader sense of the term) that reverses the direction of the KL-divergence and has the advantage of naturally being suited for distributed learning. 
+
+%VI and EP are based on matching conditional distributions, but use different directions of the KL-divergence.
+
+We note that these three families of inference methods are not specific to Bayesian inference. MCMC allows us to draw samples from an unnormalized distribution, not necessarily the posterior. VI and EP are, likewise, general methods for matching a family of distributions to a fixed one that is not necessarily the posterior. Consider the goal of estimating an arbitrary expectation of a function under a target distribution. These inference methods can be used for approximating this expectation as follows. Using MCMC, one can draw approximate samples from the target and form a Monte Carlo (MC) estimate of the expectation. Using VI, the expectation can be estimated using a so-called importance sampling (IS) estimate, evaluating the function under samples from the variational approximation, weighting the terms according to how well the density of the variational approximation matches the target. These inference methods can thus be used for approximating probabilistic expectations, which is a more general aim than that of calculating an expectation over the posterior distribution. Indeed, this is how MCMC is applied in our work of Ch 4.
+
+We also introduce modern and amortized VI, extensions of classical VI that operate on a much broader class of models. Amortized inference is of special interest, and learns an approximation, $q_\phi(\mathbf{z}\mid\mathbf{x})$, to the posterior known as an ``inference network,'' that, unlike classical VI, is explicitly a function of the observed variables $\mathbf{x}$, amortizing the cost of performing inference over inference problems similar to those encountered during learning. We explain how they can be used to learn to perform inference without making any conjugacy assumptions or performing model-specific derivations, and how they enable learning of deterministic parameters in the model. We explain two central challenges to both: reducing the variance of the gradient estimates, and producing flexible variational families, and how these can be tackled with NN techniques. For instance, in the work of \citep{MnihGregor2014}, a dense feedforward NN is used to learn how to regress the observed datum to appropriately scale a control variate.
+
+Concluding Ch 2, we delineate two facets of representation, factorization and parametrization, focusing on the latter. We describe how to construct NN distribution parametrizations for inclusion in either the model or the variational approximation, especially useful under amortized VI schemes. These NN distribution parametrizations can be used for powerful representation learning of the model variables. More broadly, they permit the whole suite of deep learning architectures to be utilized, including special techniques like attention \citep{eslami2016attend} and memory \citep{bornschein2017variational}. Our idealized NN distribution parametrization would satisfy a number of properties. It would have sampling and scoring (calculation of its density or mass function) with constant time complexity with respect to the dimension of the distribution. It would also be a universal density estimator; in other words, there would exist a sequence of NN density estimators within the family under consideration that converges in distribution to any target distribution (that satisfies some additional technical constraints) with the specified domain. It is difficult to satisfy all these properties simultaneously, however, and we describe various techniques and the tradeoffs they make in this section. For instance, inverse autoregressive flow (IAF) \citep{KingmaEtAl2016} is a distribution parameterization with $O(1)$ time complexity for sampling, and $O(D)$ time complexity for scoring arbitrary samples, where $D$ is the dimension of the distribution. Masked autoregressive flow (MAF) \citep{papamakarios2017masked}, on the other hand, a related method, has  $O(D)$ time complexity for sampling, and $O(1)$ time complexity for scoring arbitrary samples. Because of this, IAF is better suited for constructing inference networks, whereas MAF is more appropriate for density estimation. It is unlikely that either is a universal density estimator, motivating the development of more recent techniques.
+
+%Ch 2 explains how classical variational inference can be extended to work on a much broader class of models, making use of an inference network, , that amortizes the cost of performing inference. It relaxes the modeling requirements, only requiring, for example, being able to calculate $\ln(p_\phi(\mathbf{x},\mathbf{z}))$, take its derivative with respect to $\phi$, and that we can sample and score from the inference network and differentiate it with respect to $\psi$. Ch 3 surveys neural network density estimators, which can be used for both improved modeling and constructing more accurate variational approximations. Their use in inference networks is what connects NNs to inference.
+
+Our development of amortized VI is continued in Ch 3, in which we present a novel algorithm for designing the structure of inference networks in a principled fashion that is guaranteed to be optimal in a technical sense \citep{WebbEtAl2018}. The fidelity with which the inference network is able to represent the true posterior effects the bias and variance of inference amortization. Moreover, an inadequate inference network has negative consequences for model learning as well, restricting the complexity of the resulting model that is learnt. Unfortunately, the structure of an inference network is typically formed in a heuristic fashion by inverting the edges of the generative model, and is not guaranteed to be a structure which the true posterior factorizes over. If the true posterior does not factorize over the structure we have chosen for our inference network, the latter cannot represent the true posterior, even in the limit of universal density estimators over the individual factors. This motivates our algorithm, which takes as input the graphical model structure of a generative model, and outputs a graphical model structure for the posterior. The output is optimal in the sense that it does not mislead us about the conditional independencies expressed by the input---we say that it is faithful to the posterior, or equivalently that it is an I-map for the posterior \citep{KollerFriedman2009}. The output is also locally optimal in the sense that, while it is not guaranteed to have the least edges out of all I-maps for the posterior, the removal of a single edge makes it unfaithful to the posterior---it is a minimal I-map. We demonstrate the utility of model learning and inference amortization on several models with minimally faithful inference networks, comparing to heuristic and fully-connected variants. Looking to the future, we believe our method will prove a crucial component of automated universal inference in probabilistic programming languages.
+
+%Such an algorithm is important, because the bias and variance of inference amortization is effected by how closely one can approximate the true posterior.  
+The idea that inference is useful for analyzing the properties of discriminative NNs is developed in Ch 4 and 5. One instance of this is found in applying Bayesian inference to discriminative Bayesian NN models for reasoning about our uncertainty over the model's parameters (and thus, predictions) during and after learning. Consider the distributed learning of neural networks, such as by asynchronous SGD (A-SGD) \citep{DeanEtAl2012} and elastic averaging SGD (EASGD) \citep{ZhangEtAl2014}. In these methods, a worker node sends gradient updates on the model parameters to the master node based on its knowledge of the progress of the other workers. A form of uncertainty thus presents itself during learning due to the inevitably out-of-date knowledge each worker has about the other workers---the so-called ``stale gradient problem.'' In Ch 4, we present a novel distributed Bayesian learning framework to ameliorate this deficiency \citep{HasencleverWebb2016}. Rather than passing deterministic gradient updates, it passes variational approximations between workers---i.e., the messages are distributions rather than point estimates---and in this way is able to reconcile the uncertainty during learning. After learning, it is able to capture the uncertainty over the model predictions using the same variational approximation to the posterior over the model parameters. It is based on a modification of the standard EP \citep{GelmanEtAl2014} algorithm. While our framework is a general one for Bayesian learning, it has a particular efficacy for learning Bayesian NNs, which we typically desire to learn from big data. EP has the advantage over other forms of inference for this problem by naturally being formulated for distributed learning.
+
+Another instance of inference being useful for analyzing NNs is developed in Ch 5. It has been known for several years that NN classifiers can be tricked into misclassifying an input by the addition of a small amount of carefully constructed noise \citep{szegedy2013intriguing}. More generally, we would like our discriminative NN models to satisfy interpretable properties, e.g., the output does not deviate too greatly from a reference function, or that it satisfies the laws of physics within a given tolerance in the case of a control policy. The vulnerability of NNs to adversarial inputs is a serious issue for NN classifiers deployed in applications like medical image analysis and self-driving cars, where failure can result in financial loss or death. Towards this problem, we develop a novel measure of neural network robustness, framing the problem as the estimation of an expectation \citep{webb2018statistical}. We note that the event of failure is commonly a rare one, and make a connection to the rare event estimation literature of statistical inference. We show how an algorithm from this literature, adaptive multi-level splitting (AMLS) \citep{guyader2011simulation}, an MCMC inference algorithm, is able to estimate our robustness metric with low bias and variance on a variety of datasets and models. As a consequence of framing the problem as an inference task, our method scales more favourably than traditional purely optimization-based approaches, scaling linearly in the cost of the forward operation of the NN classifier. Also, by basing our method on MCMC based inference rather than VI, we are able to reliably calculate our metric for problems with high-dimensional inputs, which is common in image classification models. This work illustrates how inference methods apply to more general problems than Bayesian inference.
+
+%This process of, in a sense, inverting the model is known as Bayesian 
+
+%Traditional deep learning classification models are ...
+
+%\hl{data-efficient learning, and for model-based reinforcement learning}
+
+%This poses several challenges. Firstly, how do we calculate or estimate the ...
+
+%Given that the model evidence $p_\theta(\mathbf{x})$ requires marginalization of the latents $\mathbf{z}$, how 
+
+%It is often easier to specify a model that describes the process giving rise to the data via latent causes, rather than a direct generating process.
+
+%Discriminative models,
+
+In Ch 6, we conclude with some thoughts on the application of the ideas in this thesis to future work. We sketch out how our novel robustness metric for NNs can be extended to scale to larger models and input-dimensionality, and how one can measure the ``total NN robustness'' for adversarial properties (in contrast to the per-datum robustness). We also suggest a method for robust training motivated by our work based on generating counter-examples by sampling methods, another connection of inference methods to neural networks. Finally, we elaborate on our suggestion that the NaMI algorithm of Ch 3 can be used to automate the design of inference networks in deep probabilistic programming language (PPLs). Recently developed deep PPLs like Pyro \citep{bingham2018pyro} and Edward \citep{TranEtAl2016} combine deep learning frameworks like PyTorch and TensorFlow with simple abstractions for probabilistic modeling and inference, typically with a focus on amortized VI. Unfortunately, to perform VI in these conceptions of probabilistic programming the user is required to be particularly knowledgable in the details of VI, designing the inference network by hand based on heuristics and past experience. It would be desirable if the construction of the inference network could be automated. This is one big hurdle in producing automated universal inference, which can effectively operate on any latent variable probabilistic model without the intervention of a user in the details of how inference is applied. We believe our NaMI algorithm can be used, together with recent developments in NN distribution representation, amortized VI, and the ``poutine'' abstraction mechanisms of Pyro, to automate the design of inference networks, improving upon existing schemes and advancing the goals of probabilistic programming.
+
+\section{Publications}
+The work presented in this thesis has been published, or has been accepted for publication at the following venues:
+\begin{itemize}
+	\item Chapter 3: {\bfseries Webb, Stefan}, Golinski, Adam, Zinkov, Robert, Narayanaswamy, Siddharth, Rainforth, Tom, Teh, Yee Whye, and Wood, Frank. Faithful Inversion of Generative Models for Effective Amortized Inference. In {\itshape Proceedings of the 32nd Conference on Neural Information Processing Systems (NeurIPS 2018), Montreal, Canada}.
+	\item Chapter 4: Hasenclever, Leonard, {\bfseries Webb, Stefan}, Lienart, Thibaut, Vollmer, Sebastian, Lakshminarayanan, Balaji, Blundell, Charles, Tom, and Teh, Yee Whye. Distributed Bayesian Learning with Stochastic Natural Gradient Expectation Propagation and the Posterior Server. {\itshape Journal of Machine Learning Research 18 (2017) 1-37}.
+	\item Chapter 5: {\bfseries Webb, Stefan}, Rainforth, Tom, Teh, Yee Whye, and Pawan Kumar, M. A Statistical Approach to Assessing Neural Network Robustness. To appear in {\itshape Proceedings of the Seventh International Conference on Learning Representations (ICLR2019), New Orleans}.
+\end{itemize}
+This thesis is presented as an \emph{integrated} thesis, in which my publications are included in their camera-ready form, that is, as they appear in the proceedings from their publication venues. Following each publication chapter is a signed statement of authorship detailing my contributions.
+
+
+%We present three pieces of original work in this thesis towards solving these challenges. We produce an algorithm for constructing the factorization of variational approximations in an optimal way to improve the fidelity and scalability of VI. We develop a framework for distributed Bayesian learning that is particularly useful for large Bayesian NNs and is less prone to the stale gradient of non-Bayesian approaches. We finish by considering an example of how Bayesian inference can be applied to NNs in a non-standard context by reinterpreting NN verification as an inference problem.
+
+% Deep generative modeling (DGM) and its accompanying variational inference methodology aim to marry Bayesian generative models with deep neural networks, relaxing the restrictions on our modeling assumptions while permitting inference to scale to large data.
+
+%develop an algorithm for designing the factorization of variational approximations. Our algorithm inputs the factorization for a generative model and outputs an appropriate factorization for the variational approximation that is faithful to the posterior, in the sense that it does not make independence assumptions that are absent from the posterior.
+
+%
+
+%
+
+%Inference, on the other hand, is useful for quantifying our uncertainty over NN discriminative models. Discriminative models from the deep learning literature have been very successful in classification tasks in, for example, computer vision and speech recognition tasks. However, they have lacked the wherewithal to represent uncertainty over their predictions. ``Bayesian NNs,'' provide a bridge between discriminative and generative models, and are formed by reinterpreting a NN model's deterministic parameters as random variables. Learning can be thus reinterpreted as inference over the parameters and, subsequently, one can represent and reason over our uncertainty about a NN model's outputs.
+
+%The advantages
+
+%This flexibility in 
+
+%can come of the cost of challenging inference and therefore we develop...
+
+%In this framework, neural networks (NNs) are central for both inference and modeling. On the modeling side, deep neural networks can be incorporated into our Bayesian model for learning distributed representations parametrizing our distributions over both latent and observed variables. This allows us to loosen the exact functional form assumptions made in traditional Bayesian statistics and learn models over complex, high-dimensional perceptual inputs such as images and text. On the inference side, in addition to their strength in representation learning, neural networks are used to parametrize flexible families of approximations to the posterior, known as inference networks, required for general purpose variational inference.
+
+%We give a summary of the general framework of deep generative modeling and variational inference in our literature review, before presenting a novel algorithm for designing the structure of inference networks in a principled fashion. Our algorithm takes as input the graphical model structure of a generative model, and outputs an optimal graphical model structure for the posterior. Such an algorithm is important, because the bias and variance of inference amortization is effected by how closely one can approximate the true posterior. An inadequate inference network has negative consequences for model learning as well, restricting the complexity of the resulting model. Looking to the future, we believe our method will prove a crucial component of automated universal inference in probabilistic programming languages.
+
+%Inference is also important for discriminative NN models---a second focus of this thesis---allowing us to reason about our uncertainty over the model's parameters (and thus, predictions) during and after learning. We present a novel Bayesian learning framework that learns a distribution over NN model parameters in a distributed setting, where the learning is coordinated across worker nodes that communicate via message passing. It is able to reconcile the uncertainty during learning---worker nodes may have out-of-date information on the progress of their fellow workers---and after learning is able to capture the uncertainty over the model predictions. In another piece of work, we use statistical inference to quantify the robustness of NNs with respect to properties that are important for safety or reliably purposes, such as that the classification remains unchanged for small pertubations to the input. As a consequence of framing the problem as an inference task, our method scales more favourably than traditional purely optimization-based approaches.
+
+%Towards these goals, we develop an algorithm for designing the factorization of variational approximations. Our algorithm inputs the factorization for a generative model and outputs an appropriate factorization for the variational approximation that is faithful to the posterior, in the sense that it does not make independence assumptions that are absent from the posterior.
+
+%Towards these goals, we develop a framework for performing distributed Bayesian learning, which can be thought of as a Bayesian version of asynchronous SGD. Instead of passing gradient updates between its workers and the master node, it passes distributions...
+
+%We finish by considering an example of how Bayesian inference can be applied to NNs in a non-standard context by reinterpreting NN verification as an inference problem.
+
+
+
+%Deep generative models have already found application in text-to-speech synthesis, predicting chemical reactions, and modelling physics \hl{citations!}. Many new applications are surely to follow in the near future due to the recent advances, such as those outlined in \hl{literature review chapters}.
+
+%\hl{While this thesis is primarily concerned with neural networks for inference, we will also present two pieces of work that examine the use of inference for neural networks.}
+
+%\section{What is inference, why is it important?}
+%\hl{Probabilistic models!}
+
+%\hl{Reasoning about probabilistic models! Take neural network classifiers}
+
+%\hl{Need for scalable inference?}
+
+%\section{Thoughts}
+%Optimization that scales exists. \hl{Elaborate!} Framing inference as a problem of optimization seems like a reasonable approach to scaling inference
+
+%\hl{Shortcoming of VI: although scales well in $n$, doesn't scale well in $p$ due to the curse-of-dimensionality! Scope for combining VI and MCMC approaches.}
+
+%\hl{Note on my NeurIPS paper explaining inverting structure in models with deterministic nodes. Why it usually isn't advantageous to take advantage of structure of deterministic nodes. Also, what to do when there are plates involved.}
+
+%\hl{Applications where my NeurIPS paper is likely to be useful: amortizing inference on large-scale discrete factor graphs, e.g. for medical diagnosis => i.e. learning a data-driven proposal. Replacement for ... Model learning and inference amortization in structured deep generative models => very structured DGMs haven't been explored so far, but examples are AIR, etc.}
+
+%Combining 
+
+%\subsection{Deep learning as successful optimization}
+%The success of deep learning has been the success of optimization. Certainly, access to big data and increases in computation power have played an important role. However, I argue that the significance of algorithmic advances, particularly those relating to optimization, has been far greater. \hl{back-propagation + stepsize schemes, CNNs, RNNs, ReLU, batchnorm...} Deep learning has 
+
+%\hl{Models have been designed around making optimization easier! RNNs=>Vanishing/exploding gradients! ResNets/DenseNets=>deviation from ...}
+
+%\hl{Normalizers can be thought of modifying the model!}
+
+%\section{Examples}
+%Let us begin our discussion of generative modelling with three examples, illustrating different facets ...
+
+%\hl{Give three examples of generative models!}
+
+%\section{Motivation}
+%\hl{This framework allows us to express a wide class of powerful models, that can incorporate deep neural networks!}
+
+%\hl{We want to be able to express models in a common framework, learn/perform inference without requiring model-specific methods (complex derivations!)}
+
+%\hl{Clearly define inference, representation, and learning! Inference => both learning of inference network, and the application/performance of it use in inference algorithms. Representation => the specific mathematical forms use to represent distributions. Learning => learning the parameters of the generative model, typically to maximum a marginal log-likelihood.}
+
+%\hl{Describing these challenges allows us to situate our work in the existing literature, and having a complete vista suggest future research.}
+
+%\section{Challenges}
+%There are several obstacles currently understood to impede learning and inference in generative models in the framework thus described. Firstly, there are the problems specific to inference. Secondly, there are the problems related to representation, which have a knock-on-effect to the performance of inference and learning.
+
+%\hl{We acknowledge that there may be other hurdles to learning such models that have not been studied in the literature.}
+
+%\subsection{Inference}
+%\hl{Producing low bias/variance estimates of stochastic gradients!}
+
+%\hl{Learning models with discrete variables with existing inference methods.}
+
+%\section{Why explicit models?}
+%\hl{Provide evidence against GANs!}
+
+%\hl{Implicit models are better/necessary for situations where we can only simulate from the model. However, ...}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

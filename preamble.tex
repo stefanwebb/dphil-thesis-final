@@ -1,0 +1,194 @@
+% !TEX root = ../main.tex
+
+%%%%% SELECT YOUR DRAFT OPTIONS
+% Three options going on here; use in any combination.  But remember to turn the first two off before
+% generating a PDF to send to the printer!
+% This highlights (in blue) corrections marked with (for words) \mccorrect{blah} or (for whole
+% paragraphs) \begin{mccorrection} . . . \end{mccorrection}.  This can be useful for sending a PDF of
+% your corrected thesis to your examiners for review.  Turn it off, and the blue disappears.
+\correctionstrue
+
+%%%%% BIBLIOGRAPHY SETUP
+\usepackage{natbib}
+\bibliographystyle{plainnat}
+% This makes the bibliography left-aligned (not 'justified') and slightly smaller font.
+\renewcommand*{\bibfont}{\small}
+\setlength{\bibsep}{1pt}
+\setcitestyle{square}
+
+%%%%% THESIS / TITLE PAGE INFORMATION
+% Everybody needs to complete the following:
+\title{\vspace{20pt}Neural Networks for Inference,\\ Inference for Neural Networks}
+\author{Stefan Webb}
+\college{Wadham College}
+
+% Your full degree name.  (But remember that DPhils aren't "in" anything.  They're just DPhils.)
+\degree{Doctor of Philosophy}
+% Term and year of submission, or date if your board requires (eg most masters)
+\degreedate{Michaelmas 2018}
+
+\usepackage{microtype}
+
+% use Times
+\usepackage{times}
+% For figures
+\usepackage{graphicx} % more modern
+%\usepackage{epsfig} % less modern
+%\usepackage{subfigure} 
+\usepackage{subcaption} 
+%\graphicspath{{./part/ipmcmc/figures/}{./misc/figures/}{./bopp/figures/}{./opt/figures/}{./design/figures/}{./nest/figures/}{./inf/figures/}{./part/figures/}{./bayes/figures/}{./probprog/figures/}{./part/figures/}}
+\usepackage{tikz}
+\usetikzlibrary{fit}					% fitting shapes to coordinates
+\usetikzlibrary{backgrounds}	% drawing the background after the foreground
+\usepackage{setspace}
+\usepackage{pdfpages}
+
+\usepackage{cancel}
+
+%\usepackage{svg}
+
+% For algorithms
+
+
+% For math
+\usepackage{amsthm}
+\usepackage{dsfont}
+\usepackage{amssymb,amsmath}
+\usepackage{bbm}
+
+%\newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+\usepackage{hyperref}
+
+\usepackage{bibentry}
+\nobibliography*
+
+
+% % BOPP
+
+%\usepackage{enumitem}
+%\setlist[itemize]{leftmargin=*}
+%\usepackage{paralist}
+\usepackage{footmisc}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{textcomp}
+\usepackage{xspace}
+\usepackage{amsbsy}
+\usepackage{siunitx}
+%\usepackage{algorithmicx}
+%\usepackage{algpseudocode}
+\usepackage{mathtools}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{adjustbox}
+\usepackage{microtype}
+\usepackage{todonotes}
+
+\usepackage{wrapfig}
+\usepackage{thmtools}
+\usepackage{thm-restate}
+
+%\newcommand{\angurl}{\scriptsize \url{http://www.robots.ox.ac.uk/~fwood/anglican}}
+%\newcommand{\myurl}{\scriptsize \url{https://bitbucket.org/twgr/ipmcmc}}
+
+\definecolor{darkgreenClj}{rgb}{0.25,.5,0.25}
+\definecolor{blueClj}{rgb}{0,0.33,0.66}
+\definecolor{redClj}{rgb}{0.66,0.0,0.0}
+\definecolor{purpleClj}{rgb}{0.33,0,0.66}
+\definecolor{cyanClj}{rgb}{0.0,0.5,0.5}
+\definecolor{orangeClj}{rgb}{0.75,0.35,0.0}
+\definecolor{grayClj}{rgb}{0.4,0.4,0.4}
+\lstset{ 
+	language=Lisp, 
+	basicstyle=\small\ttfamily,
+	keywordstyle={}, 
+	alsoletter={<-,->,:,*,/,?,+,-,/,>,<,=, &},
+	commentstyle=\em \color{gray}, 
+	frame=lines,
+	%float=tbph,
+	% captionpos=b,
+	showstringspaces=false, 
+	keywordstyle=[1]\bf\ttfamily\color{blueClj},
+	keywords=[1]{BO,theta-best,bo-acquire,sample-initial-points,sample,observe,observe<-,predict,mem,store,retrieve,return,catch,throw,absorb,produce,with-primitive-procedures,conditional,result,log-marginal,mean,
+		->sample,->observe,->result},
+	keywordstyle=[2]\bf\ttfamily\color{redClj},
+	keywords=[2]{if,let,letfn,loop,looppredict,recur,or,trampoline,assoc,argmax,count,cons,conj,
+		do,first,fn,get,keys,lazy-seq,map,nth,mat/add,mat/div,print,reduce,repeat,repeatedly,rest,set,shape,take,vec,
+		when,max,fn?,inc,sample*,observe*},
+	keywordstyle=[3]\bf\ttfamily\color{cyanClj},
+	keywords=[3]{dirichlet-discrete,exponential,flip,gamma,beta,mvn-niw,normal,uniform-continuous,distribution,factor,mvn,uniform,bernoulli,uniform-discrete,poisson,
+		simulate,abc-likelihood,student-t,dirichlet},
+	keywordstyle=[4]\bf\ttfamily\color{purpleClj},
+	keywords=[4]{defopt,defquery,doopt,doquery,query,defdist,infer,checkpoint,exec,defm,cps-of-expression,
+		defn,def,declare},
+	keywordstyle=[5]\bf\ttfamily\color{orangeClj},
+	keywords=[5]{:lmh,:ipmcmc,:war,:peace,:log-weight,:result,:id,:dist,:cont,:value,:state,:importance,:smc,:pgibbs},
+	mathescape=true,
+	stringstyle={},
+		keywordstyle=[6]\bf\ttfamily\color{darkgreenClj},
+		keywords=[6]{+,-,nil,>,<,*,/,=, &,->>,->,true,false},
+		mathescape=true,
+		stringstyle={},
+} 
+\lstnewenvironment{code}[2]{\lstset{caption=#1,label=#2}}{}
+
+\newtheorem{example}{Example} 
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}[theorem]{Lemma} 
+%\newtheorem{proposition}[proposition]{Proposition} 
+\newtheorem{remark}{Remark}[chapter]
+%\newtheorem{corollary}[corollary]{Corollary}
+\newtheorem{definition}{Definition}[chapter]
+%\newtheorem{conjecture}[conjecture]{Conjecture}
+%\newtheorem{axiom}[axiom]{Axiom}
+
+% % % % % % % % % % % % % % % % % % %
+
+
+\usepackage{naesseth}
+%\usepackage{packages/algorithm,packages/algorithmic}
+\usepackage{abbreviations}
+\usepackage{tikz-bayesnet}
+
+\usepackage{algorithmicx}
+\usepackage[chapter]{algorithm}
+\usepackage{algpseudocode}
+\usepackage{setspace}
+% % % % % % % % %
+\algnewcommand\algorithmicswitch{\textbf{switch}}
+\algnewcommand\algorithmiccase{\textbf{case}}
+\algnewcommand\algorithmicassert{\texttt{assert}}
+\algnewcommand\Assert[1]{\State \algorithmicassert(#1)}%
+% New "environments"
+\algdef{SE}[SWITCH]{Switch}{EndSwitch}[1]{\algorithmicswitch\ #1\ \algorithmicdo}{\algorithmicend\ \algorithmicswitch}%
+\algdef{SE}[CASE]{Case}{EndCase}[1]{\algorithmiccase\ #1}{\algorithmicend\ \algorithmiccase}%
+%\algtext*{EndSwitch}%
+\algtext*{EndCase}%
+\algnewcommand{\IIf}[1]{\State\algorithmicif\ #1\ \algorithmicthen}
+\algnewcommand{\EndIIf}{\unskip\ \algorithmicend\ \algorithmicif}
+
+
+%%%%%%%%%%%%%
+
+\usepackage{titlesec}
+
+\titlespacing*\section{0pt}{14pt plus 4pt minus 2pt}{3pt plus 2pt minus 2pt}
+\titlespacing*\subsection{0pt}{10pt plus 4pt minus 2pt}{3pt plus 2pt minus 2pt}
+\titlespacing*\subsubsection{0pt}{10pt plus 4pt minus 2pt}{3pt plus 2pt minus 2pt}
+
+\setlength{\intextsep}{14pt}%
+\setlength{\columnsep}{18pt}%
+
+\DeclarePairedDelimiterX{\infdivx}[2]{\{}{\}}{%
+  #1\;\delimsize\|\;#2%
+}
+\newcommand{\infdiv}{\text{KL}\infdivx}
+
+\newcommand{\model}{$p_\phi(\mathbf{x},\mathbf{z})$}
+\newcommand{\fixedmodel}{$p(\mathbf{x},\mathbf{z})$}
+\newcommand{\guide}{$q_\psi(\mathbf{z}\mid\mathbf{z})$}
+\newcommand{\logmodel}{\lg\left(\model\right)}
+\newcommand{\logfixedmodel}{\lg\left(\model\right)}
+\newcommand{\logguide}{\lg\left(\guide\right)}
