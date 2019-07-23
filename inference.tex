@@ -80,11 +80,11 @@ into a proposal, $g'(x'\mid x)$, and an accept-reject step with probability $A(x
 
 Substituting \eqref{eq:mh-transition} into the detailed balance and rearranging,
 \begin{align}\label{eq:mh-detailed-balance}
-	\frac{A(x',x)}{A(x,x')} &= \frac{\pi(x')}{\pi(x)}\frac{g'(x\mid x')}{g(x'\mid x)}.
+	\frac{A(x',x)}{A(x,x')} &= \frac{\pi(x')}{\pi(x)}\frac{g'(x\mid x')}{g'(x'\mid x)}.
 \end{align}
 Fixing the proposal, the acceptance probability can be defined as,
 \begin{align}\label{eq:mh-acceptance-prob}
-	A(x',x) &= \min\left\{1, \frac{\pi(x')}{\pi(x)}\frac{g'(x\mid x')}{g(x'\mid x)}\right\},
+	A(x',x) &= \min\left\{1, \frac{\pi(x')}{\pi(x)}\frac{g'(x\mid x')}{g'(x'\mid x)}\right\},
 \end{align}
 to satisfy \eqref{eq:mh-detailed-balance}. So, to apply the MH algorithm, we decide upon a proposal, $g'(x'\mid x)$, and simulate the trajectory as previously described, using \eqref{eq:mh-transition} and \eqref{eq:mh-acceptance-prob}. It can be shown that a wide variety of proposals satisfy the technical conditions for the chain to have a unique stationary distribution (the existence is guaranteed by detailed balance) \citep{andrieu2003introduction}.
 
@@ -115,25 +115,25 @@ which, circularly, is the problem that we are trying to solve by \eqref{eq:class
 
 The solution is to optimize an alternative objective---clearly the log-evidence term, $\ln(p(\mathbf{x}))$, is not a function of $q$ and can be subtracted. Negating the resulting expression gives,
 \begin{align*}
-	\mathcal{L}_{\text{\scshape ELBo}}\{q,\mathbf{x}\} &\triangleq \mathbb{E}_{q}\left[\ln(p(\mathbf{x},\mathbf{z}))\right] - \mathbb{E}_q\left[\ln(q(\mathbf{z}))\right],
+	\mathcal{L}_{\text{ELBo}}\{q,\mathbf{x}\} &\triangleq \mathbb{E}_{q}\left[\ln(p(\mathbf{x},\mathbf{z}))\right] - \mathbb{E}_q\left[\ln(q(\mathbf{z}))\right],
 \end{align*}
-an expression known as the \emph{evidence lower bound} ({\scshape ELBo}). Thus solving \eqref{eq:classical-vi} is equivalent to minimizing the negative {\scshape ELBo},
+an expression known as the \emph{evidence lower bound} (ELBo). Thus solving \eqref{eq:classical-vi} is equivalent to minimizing the negative ELBo,
 \begin{align}\label{eq:neg-elbo}
-	q^*(\mathbf{z}) &\triangleq\text{argmin}_{q\in\mathcal{Q}}-\mathcal{L}_{\text{\scshape ELBo}}\{q,\mathbf{x}\}.
+	q^*(\mathbf{z}) &\triangleq\text{argmin}_{q\in\mathcal{Q}}-\mathcal{L}_{\text{ELBo}}\{q,\mathbf{x}\}.
 \end{align}
 
-The {\scshape ELBo} can be given several useful interpretation. Firstly, interpreting the two terms in its definition, we see that $\mathbb{E}\left[\ln(p(\mathbf{x},\mathbf{z}))\right]$ rewards joint configurations of $(\mathbf{x},\mathbf{z})$ with high probability, permitting $\mathbf{x}$ to be explained or reconstructed, whereas $H(q)=-\mathbb{E}\left[\ln(q(\mathbf{z}))\right]$ rewards $q$ with high entropy, i.e., being less informative, thus providing a regularizing effect.
+The ELBo can be given several useful interpretation. Firstly, interpreting the two terms in its definition, we see that $\mathbb{E}\left[\ln(p(\mathbf{x},\mathbf{z}))\right]$ rewards joint configurations of $(\mathbf{x},\mathbf{z})$ with high probability, permitting $\mathbf{x}$ to be explained or reconstructed, whereas $H(q)=-\mathbb{E}\left[\ln(q(\mathbf{z}))\right]$ rewards $q$ with high entropy, i.e., being less informative, thus providing a regularizing effect.
 
-A second interpretation of the {\scshape ELBo} is given by rewriting it as,
+A second interpretation of the ELBo is given by rewriting it as,
 \begin{align*}
-	\mathcal{L}_{\text{\scshape ELBo}}\{q,\mathbf{x}\} &= \mathbb{E}\left[\ln(p(\mathbf{x}\mid\mathbf{z}))\right] - \text{KL}\left\{q(\mathbf{z})||p(\mathbf{z})\right\}.
+	\mathcal{L}_{\text{ELBo}}\{q,\mathbf{x}\} &= \mathbb{E}\left[\ln(p(\mathbf{x}\mid\mathbf{z}))\right] - \text{KL}\left\{q(\mathbf{z})||p(\mathbf{z})\right\}.
 \end{align*}
 The first term, $\mathbb{E}\left[\ln(p(\mathbf{x}\mid\mathbf{z}))\right]$, is again a reconstruction term that rewards $q$ that explain $\mathbf{x}$ well, and the second term penalizes $q$ that deviate from the prior, $p(\mathbf{z})$, that is, that are as simple as the prior, thus providing a regularizing effect.
 
-The reason why the {\scshape ELBo} is called the evidence lower bound, is that it lower-bounds the log-evidence,
+The reason why the ELBo is called the evidence lower bound, is that it lower-bounds the log-evidence,
 \begin{align*}
-	\ln\left(p\left(\mathbf{x}\right)\right) &= \text{KL}\left\{q(\mathbf{z})||p(\mathbf{z}\mid\mathbf{x})\right\} + \mathcal{L}_{\text{\scshape ELBo}}\\
-	&\ge \mathcal{L}_{\text{\scshape ELBo}},
+	\ln\left(p\left(\mathbf{x}\right)\right) &= \text{KL}\left\{q(\mathbf{z})||p(\mathbf{z}\mid\mathbf{x})\right\} + \mathcal{L}_{\text{ELBo}}\\
+	&\ge \mathcal{L}_{\text{ELBo}},
 \end{align*}
 noting that the KL-divergence is always nonnegative. This fact will prove useful in the next section.
 
@@ -147,7 +147,7 @@ One simple algorithm to solve \eqref{eq:neg-elbo} is coordinate ascent variation
 \begin{align}\label{eq:cavi}
 	q^*_d(z_d) &\propto \exp\left\{\mathbb{E}_{q_{-d}}\left[\ln\left(p(z_d\mid\mathbf{z}_{-d},\mathbf{x})\right)\right]\right\},
 \end{align}
-where $\mathbf{z}_{-d}\triangleq\{z_1,z_2,\ldots,z_{d-1},z_{d+1},\ldots,z_D\}$, $q_{-d}(\mathbf{z}_{-d})\triangleq\prod_{i\neq d}q_i(z_i)$, and $p(z_d\mid\mathbf{z_{-d}},\mathbf{x})$ is known as the \emph{complete conditional}. Applying this algorithm, we sample a $d$ at random, update $z_d$ using \eqref{eq:cavi}, and repeat until the {\scshape ELBo} has satisfied some termination criterion, such as that its relative change is less than a small constant, $\delta$.
+where $\mathbf{z}_{-d}\triangleq\{z_1,z_2,\ldots,z_{d-1},z_{d+1},\ldots,z_D\}$, $q_{-d}(\mathbf{z}_{-d})\triangleq\prod_{i\neq d}q_i(z_i)$, and $p(z_d\mid\mathbf{z_{-d}},\mathbf{x})$ is known as the \emph{complete conditional}. Applying this algorithm, we sample a $d$ at random, update $z_d$ using \eqref{eq:cavi}, and repeat until the ELBo has satisfied some termination criterion, such as that its relative change is less than a small constant, $\delta$.
 
 A requirement of this method is that the optimal expression for $q^*_d(\cdot)$ is calculable in closed-form, for which it turns out is possible when the complete conditional belongs to the exponential family. Other classical variational inference algorithms require similar assumptions of conjugacy and often require lengthy model specific derivations to determine their update equations. This is one motivation for amortized VI, to be explained in \ref{sec:amortized-vi}.
 
@@ -286,11 +286,11 @@ Although not widely used in practice, alternatives to the KL-divergence have bee
 \begin{align*}
 	D_\alpha\left\{p||q\right\} &\triangleq \frac{1}{\alpha-1}\ln\int_\mathcal{X}p(\mathbf{x})^\alpha q(\mathbf{x})^{1-\alpha}d\mathbf{x},
 \end{align*}
-where $\alpha>0$, $\alpha\neq1$ for two distributions on $\mathcal{X}$. This metric recovers the KL-divergence in the limit as $\alpha\rightarrow1$ and a function of the Hellinger distance for $\alpha=0.5$, amongst others. Replacing the KL-divergence in the derivation of the {\scshape ELBo} results in the new objective,
+where $\alpha>0$, $\alpha\neq1$ for two distributions on $\mathcal{X}$. This metric recovers the KL-divergence in the limit as $\alpha\rightarrow1$ and a function of the Hellinger distance for $\alpha=0.5$, amongst others. Replacing the KL-divergence in the derivation of the ELBo results in the new objective,
 \begin{align*}
 	\mathcal{L}_\alpha &\triangleq \frac{1}{\alpha-1}\ln\mathbb{E}_{q_\psi}\left[\left(\frac{p_\phi(\mathbf{x},\mathbf{z})}{q_\psi(\mathbf{z})}\right)^{1-\alpha}\right], 
 \end{align*}
-which is optimized similarly to the ELBO.Interestingly, the procedure also works for $\alpha<0$, in which case $\mathcal{L}_\alpha$ is an upper bound on the model evidence.
+which is optimized similarly to the ELBo. Interestingly, the procedure also works for $\alpha<0$, in which case $\mathcal{L}_\alpha$ is an upper bound on the model evidence.
 
 Similar extensions to modern VI have been developed for the more general family of $f$-divergences \citep{bamler2017perturbative}, as well as the Wasserstein distance \citep{ranganath2016operator, liu2016stein}. It remains an open question in which scenarios such measures should be prefered to the KL-divergence.
 
@@ -307,11 +307,11 @@ Amortized inference \citep{dayan1995helmholtz, RezendeEtAl2014, KingmaWelling201
 \begin{align*}
 	q_\psi(\mathbf{z}\mid\mathcal{D}) &= \prod^D_{d=1}q_\psi(\mathbf{z}_d\mid\mathbf{x}_d).
 \end{align*}
-Plugging this definition into, e.g., the {\scshape ELBo}, and performing learning as per modern VI allows us to simultaneously solve the related inference problems for each datum whilst performing model learning on the global parameters. After learning, we can approximate the posterior, $p_\phi(\mathbf{z}'|\mathbf{x}',\mathcal{D})$, for a datum $\mathbf{x}'$ not seen during learning but similar to the dataset with the inference network, $q_\psi(\mathbf{z}'|\mathbf{x}')$.
+Plugging this definition into, e.g., the ELBo, and performing learning as per modern VI allows us to simultaneously solve the related inference problems for each datum whilst performing model learning on the global parameters. After learning, we can approximate the posterior, $p_\phi(\mathbf{z}'|\mathbf{x}',\mathcal{D})$, for a datum $\mathbf{x}'$ not seen during learning but similar to the dataset with the inference network, $q_\psi(\mathbf{z}'|\mathbf{x}')$.
 
 NNs are not typically used with non-amortized modern VI (althought they are not precluded from doing so). In contrast, NNs \emph{are} widely used with amortized VI, both for constructing the required inference network approximating the posterior---which must necessary model the complex relationship between the variable that is conditioned on and the distribution of the latent variables---and for modeling. Modern amortized VI has opened up a new class of models known as \emph{deep generative models} including the VAE and others \citep{GregorEtAl2015,eslami2016attend,bornschein2017variational} that make use of deep-learning innovations for discriminative modeling.
 
-The performance of both inference amortization and model learning depends on how closely our inference network can approximate the true posterior for the current model parameters, $\phi$. Clearly this is true for inference amortization: the quality of inference amortization can be measured by $\text{KL}\left\{q(\mathbf{z}\mid\mathbf{x})||p(\mathbf{z}\mid\mathbf{x})\right\}$. With regards to model learning, we see from the relation $\ln(p(\mathbf{x}))=\text{KL}\left\{q(\mathbf{z}\mid\mathbf{x})||p(\mathbf{z}\mid\mathbf{x})\right\}+\mathcal{L}_{\text{\scshape ELBo}}(\mathbf{x})$ that the gradient update to the model parameters will be more in the direction of the true marginal log-likelihood the smaller is the gap between the inference network and true posterior. If the inference network is poorly constructed so this gap can never be sufficiently small, the model learning will be biased. In the next section and the following chapter, we discuss two aspects of suitably designing inference networks. Both the factorization of the distribution of $q$ and the individual distributions for each factor must be appropriately chosen for amortized VI to work well in practice.
+The performance of both inference amortization and model learning depends on how closely our inference network can approximate the true posterior for the current model parameters, $\phi$. Clearly this is true for inference amortization: the quality of inference amortization can be measured by $\text{KL}\left\{q(\mathbf{z}\mid\mathbf{x})||p(\mathbf{z}\mid\mathbf{x})\right\}$. With regards to model learning, we see from the relation $\ln(p(\mathbf{x}))=\text{KL}\left\{q(\mathbf{z}\mid\mathbf{x})||p(\mathbf{z}\mid\mathbf{x})\right\}+\mathcal{L}_{\text{ELBo}}(\mathbf{x})$ that the gradient update to the model parameters will be more in the direction of the true marginal log-likelihood the smaller is the gap between the inference network and true posterior. If the inference network is poorly constructed so this gap can never be sufficiently small, the model learning will be biased. In the next section and the following chapter, we discuss two aspects of suitably designing inference networks. Both the factorization of the distribution of $q$ and the individual distributions for each factor must be appropriately chosen for amortized VI to work well in practice.
 
 Amortized inference can also be motivated from a cognitive perspective \citep{Gershman2014}. The human brain appears to be able to cache and compose the results of previous inferences to answer new queries. It can be demonstrated from simple experiments that the answer to a query can be predicted from a person's answer to a simpler query if that simpler query occured first and requires a subinference of the more complex one. \emph{Amortization expresses the experimentally observable interaction between inference and memory}.
 
@@ -328,4 +328,4 @@ MCMC is well suited to the application of measuring NN robustness in Ch 5 becaus
 
 We point out that the inference methods presented apply more broadly than to just Bayesian inference. MCMC can be used to sample from an unnormalized density, not necessarily the posterior. VI in its many forms can be used to match a density estimator to a target distribution, which is not necessarily the posterior. The techniques can be used to estimate a probabilistic expectation, which does not necessarily have to be over a posterior distribution. Indeed, this is how inference is used in Ch 5, where the target distribution is defined by the region of failure of the NN under the property to be verified.
 
-On a historical note, many of the inference methods introduced in this chapter have their genesis in the statistical physics literature. MCMC methods were originally introduced to sample from models arising in statistical physics \citep{metropolis1953equation}. Also, variational inference with the mean-field approach was introduced to model spin glasses, which are types of disordered magnets \citep{opper2001advanced}. \citet{dayan1995helmholtz} were the first to introduce the concept of the inference network, or ``recognition model'' as they termed it. They draw a connection between the alternative explanations a latent variable generative model makes of the data to the configurations of a physical system, and connect learning to the principle of minimum energy. Their model, the Helmholtz machine is learnt by the wake-sleep algorithm, which differs from algorithms such as SGD on the {\scshape ELBo} in that it optimizes a separate objective for the model and inference network.
+On a historical note, many of the inference methods introduced in this chapter have their genesis in the statistical physics literature. MCMC methods were originally introduced to sample from models arising in statistical physics \citep{metropolis1953equation}. Also, variational inference with the mean-field approach was introduced to model spin glasses, which are types of disordered magnets \citep{opper2001advanced}. \citet{dayan1995helmholtz} were the first to introduce the concept of the inference network, or ``recognition model'' as they termed it. They draw a connection between the alternative explanations a latent variable generative model makes of the data to the configurations of a physical system, and connect learning to the principle of minimum energy. Their model, the Helmholtz machine is learnt by the wake-sleep algorithm, which differs from algorithms such as SGD on the ELBo in that it optimizes a separate objective for the model and inference network.
